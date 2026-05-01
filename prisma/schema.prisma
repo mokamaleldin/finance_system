@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MovementType {
+  RECEIVED
+  PAID
+  FEE
+  ADJUSTMENT
+}
+
+enum Currency {
+  EGP
+  USD
+  TRY
+}
+
+enum TransactionStatus {
+  OPEN
+  PARTIALLY_SETTLED
+  SETTLED
+}
+
+model Customer {
+  id                String             @id @default(cuid())
+  name              String
+  phone             String?
+  country           String?
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  movements         FinancialMovement[]
+  transactionGroups TransactionGroup[]
+
+  @@index([name])
+  @@index([phone])
+}
+
+model FinancialMovement {
+  id                 String            @id @default(cuid())
+  customerId         String?
+  customer           Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  date               DateTime
+  type               MovementType
+  currency           Currency
+  amount             Decimal           @db.Decimal(18, 4)
+  rate               Decimal?          @db.Decimal(18, 6)
+  notes              String?
+  transactionGroupId String?
+  transactionGroup   TransactionGroup? @relation(fields: [transactionGroupId], references: [id], onDelete: SetNull)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([date])
+  @@index([customerId])
+  @@index([transactionGroupId])
+  @@index([type])
+  @@index([currency])
+}
+
+model TransactionGroup {
+  id                   String              @id @default(cuid())
+  customerId           String
+  customer             Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  title                String?
+  status               TransactionStatus   @default(OPEN)
+  costRate             Decimal?            @db.Decimal(18, 6)
+  sellRate             Decimal?            @db.Decimal(18, 6)
+  sourceCurrency       Currency?
+  targetCurrency       Currency?
+  expectedSourceAmount Decimal?            @db.Decimal(18, 4)
+  expectedTargetAmount Decimal?            @db.Decimal(18, 4)
+  actualSourceAmount   Decimal?            @db.Decimal(18, 4)
+  actualTargetAmount   Decimal?            @db.Decimal(18, 4)
+  profit               Decimal?            @db.Decimal(18, 4)
+  notes                String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  financialMovements   FinancialMovement[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  date      DateTime
+  usdToEgp  Decimal  @db.Decimal(18, 6)
+  usdToTry  Decimal  @db.Decimal(18, 6)
+  crossRate Decimal  @db.Decimal(18, 6)
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
