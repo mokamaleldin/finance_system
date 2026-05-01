@@ -1,47 +1,31 @@
 import fs from "node:fs";
+import { Document, Font, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { currencies } from "@/lib/calculations";
+import { formatDate, formatMoney } from "@/lib/format";
 import {
-  Document,
-  Font,
-  Page,
-  StyleSheet,
-  Text,
-  View,
-} from "@react-pdf/renderer";
-import { Currency } from "@prisma/client";
-import {
-  currencies,
-  movementTypeLabels,
-} from "@/lib/calculations";
-import {
-  formatDate,
-  formatMoney,
-  formatSignedBalance,
-} from "@/lib/format";
-import type { getCustomerStatement } from "@/lib/ledger";
+  deliveredStatusLabels,
+  receivedStatusLabels,
+  transferStatusLabels,
+  transferTypeLabels,
+} from "@/lib/options";
+import type { getCustomerTransferSummary } from "@/lib/transfer-service";
 
-type Statement = Awaited<ReturnType<typeof getCustomerStatement>>;
+type CustomerTransferSummary = Awaited<ReturnType<typeof getCustomerTransferSummary>>;
 
 const fontCandidates = [
   "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
   "/System/Library/Fonts/Supplemental/Arial.ttf",
-  "/System/Library/Fonts/Supplemental/Damascus.ttc",
   "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
 ];
 
 let registeredFontFamily = "Helvetica";
 
 export function registerStatementFont() {
-  if (registeredFontFamily !== "Helvetica") {
-    return registeredFontFamily;
-  }
-
+  if (registeredFontFamily !== "Helvetica") return registeredFontFamily;
   const fontPath = fontCandidates.find((candidate) => fs.existsSync(candidate));
 
   if (fontPath) {
-    Font.register({
-      family: "StatementArabic",
-      src: fontPath,
-    });
+    Font.register({ family: "StatementArabic", src: fontPath });
     registeredFontFamily = "StatementArabic";
   }
 
@@ -62,197 +46,107 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     marginBottom: 14,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 700,
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: "#65736e",
-  },
-  grid: {
-    flexDirection: "row-reverse",
-    gap: 8,
-    marginBottom: 12,
-  },
-  box: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#d8dfdc",
-    borderRadius: 6,
-    padding: 8,
-  },
-  boxLabel: {
-    color: "#65736e",
-    marginBottom: 4,
-  },
-  boxValue: {
-    fontSize: 11,
-    fontWeight: 700,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: 700,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  table: {
-    borderWidth: 1,
-    borderColor: "#d8dfdc",
-  },
+  title: { fontSize: 22, fontWeight: 700, marginBottom: 6 },
+  subtitle: { fontSize: 11, color: "#65736e" },
+  grid: { flexDirection: "row-reverse", gap: 8, marginBottom: 12 },
+  box: { flex: 1, borderWidth: 1, borderColor: "#d8dfdc", borderRadius: 6, padding: 8 },
+  boxLabel: { color: "#65736e", marginBottom: 4 },
+  boxValue: { fontSize: 10, fontWeight: 700, marginBottom: 2 },
+  sectionTitle: { fontSize: 12, fontWeight: 700, marginTop: 8, marginBottom: 8 },
+  table: { borderWidth: 1, borderColor: "#d8dfdc" },
   tableRow: {
     flexDirection: "row-reverse",
     borderBottomWidth: 1,
     borderBottomColor: "#d8dfdc",
-    minHeight: 26,
+    minHeight: 28,
   },
-  tableHeader: {
-    backgroundColor: "#e7f0ea",
-    fontWeight: 700,
-  },
-  cell: {
-    padding: 5,
-    borderLeftWidth: 1,
-    borderLeftColor: "#d8dfdc",
-    textAlign: "right",
-  },
-  dateCell: { width: "10%" },
-  typeCell: { width: "10%" },
-  idCell: { width: "13%" },
-  notesCell: { width: "25%" },
-  moneyCell: { width: "14%" },
-  balanceCell: { width: "14%", borderLeftWidth: 0 },
-  footer: {
-    marginTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: "#d8dfdc",
-    paddingTop: 10,
-    color: "#65736e",
-  },
+  tableHeader: { backgroundColor: "#e7f0ea", fontWeight: 700 },
+  cell: { padding: 5, borderLeftWidth: 1, borderLeftColor: "#d8dfdc", textAlign: "right" },
+  dateCell: { width: "11%" },
+  customerCell: { width: "17%" },
+  typeCell: { width: "15%" },
+  moneyCell: { width: "16%" },
+  statusCell: { width: "17%" },
+  lastCell: { borderLeftWidth: 0 },
+  footer: { marginTop: 14, borderTopWidth: 1, borderTopColor: "#d8dfdc", paddingTop: 10, color: "#65736e" },
 });
 
-function BalanceLine({
+function TotalsBox({
   label,
-  balances,
-  currency,
+  totals,
 }: {
   label: string;
-  balances: Statement["currentBalance"];
-  currency?: Currency;
+  totals: CustomerTransferSummary["receivedTotals"];
 }) {
-  const selectedCurrencies = currency ? [currency] : currencies;
-
   return (
     <View style={styles.box}>
       <Text style={styles.boxLabel}>{label}</Text>
-      {selectedCurrencies.map((item) => (
-        <Text key={item} style={styles.boxValue}>
-          {formatSignedBalance(balances[item], item)}
+      {currencies.map((currency) => (
+        <Text key={currency} style={styles.boxValue}>
+          {formatMoney(totals[currency], currency)}
         </Text>
       ))}
     </View>
   );
 }
 
-export function CustomerStatementDocument({
-  statement,
-  from,
-  to,
-  currency,
-}: {
-  statement: Statement;
-  from?: Date;
-  to?: Date;
-  currency?: Currency;
-}) {
+export function CustomerStatementDocument({ summary }: { summary: CustomerTransferSummary }) {
   const fontFamily = registerStatementFont();
-  const selectedCurrencies = currency ? [currency] : currencies;
 
   return (
-    <Document title={`كشف حساب - ${statement.customer.name}`} author="دفتر الصرافة">
+    <Document title={`تقرير عميل - ${summary.customer.name}`} author="نظام التحويل">
       <Page size="A4" style={[styles.page, { fontFamily }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>كشف حساب</Text>
-          <Text style={styles.subtitle}>{statement.customer.name}</Text>
+          <Text style={styles.title}>تقرير عميل</Text>
+          <Text style={styles.subtitle}>{summary.customer.name}</Text>
         </View>
 
         <View style={styles.grid}>
-          <View style={styles.box}>
-            <Text style={styles.boxLabel}>من تاريخ</Text>
-            <Text style={styles.boxValue}>{from ? formatDate(from) : "بداية الحساب"}</Text>
-          </View>
-          <View style={styles.box}>
-            <Text style={styles.boxLabel}>إلى تاريخ</Text>
-            <Text style={styles.boxValue}>{to ? formatDate(to) : "حتى الآن"}</Text>
-          </View>
-          <View style={styles.box}>
-            <Text style={styles.boxLabel}>العملة</Text>
-            <Text style={styles.boxValue}>{currency || "كل العملات"}</Text>
-          </View>
-          <View style={styles.box}>
-            <Text style={styles.boxLabel}>عدد الحركات</Text>
-            <Text style={styles.boxValue}>{statement.movementCount.toString()}</Text>
-          </View>
+          <TotalsBox label="إجمالي ما استلمناه" totals={summary.receivedTotals} />
+          <TotalsBox label="إجمالي ما سلمناه" totals={summary.deliveredTotals} />
+          <TotalsBox label="إجمالي الربح" totals={summary.profitTotals} />
         </View>
 
         <View style={styles.grid}>
-          <BalanceLine label="الرصيد السابق" balances={statement.previousBalance} currency={currency} />
-          <BalanceLine label="الرصيد الحالي" balances={statement.currentBalance} currency={currency} />
+          <TotalsBox label="باقي علينا" totals={summary.open.oweCustomer} />
+          <TotalsBox label="باقي لنا" totals={summary.open.customerOwesUs} />
         </View>
 
-        <View style={styles.grid}>
-          <View style={styles.box}>
-            <Text style={styles.boxLabel}>إجمالي لنا</Text>
-            {selectedCurrencies.map((item) => (
-              <Text key={item} style={styles.boxValue}>
-                {formatMoney(statement.totals.debit[item], item)}
-              </Text>
-            ))}
-          </View>
-          <View style={styles.box}>
-            <Text style={styles.boxLabel}>إجمالي علينا</Text>
-            {selectedCurrencies.map((item) => (
-              <Text key={item} style={styles.boxValue}>
-                {formatMoney(statement.totals.credit[item], item)}
-              </Text>
-            ))}
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>تفاصيل الحركات</Text>
+        <Text style={styles.sectionTitle}>العمليات</Text>
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
             <Text style={[styles.cell, styles.dateCell]}>التاريخ</Text>
+            <Text style={[styles.cell, styles.customerCell]}>العميل</Text>
             <Text style={[styles.cell, styles.typeCell]}>النوع</Text>
-            <Text style={[styles.cell, styles.idCell]}>رقم الحركة</Text>
-            <Text style={[styles.cell, styles.notesCell]}>ملاحظات</Text>
-            <Text style={[styles.cell, styles.moneyCell]}>لنا</Text>
-            <Text style={[styles.cell, styles.moneyCell]}>علينا</Text>
-            <Text style={[styles.cell, styles.balanceCell]}>الرصيد الجاري</Text>
+            <Text style={[styles.cell, styles.moneyCell]}>استلمنا</Text>
+            <Text style={[styles.cell, styles.moneyCell]}>سلمنا / مطلوب</Text>
+            <Text style={[styles.cell, styles.moneyCell]}>الربح</Text>
+            <Text style={[styles.cell, styles.statusCell, styles.lastCell]}>الحالة</Text>
           </View>
 
-          {statement.rows.map((row) => (
-            <View key={row.movement.id} style={styles.tableRow} wrap={false}>
-              <Text style={[styles.cell, styles.dateCell]}>{formatDate(row.movement.date)}</Text>
-              <Text style={[styles.cell, styles.typeCell]}>{movementTypeLabels[row.movement.type]}</Text>
-              <Text style={[styles.cell, styles.idCell]}>{row.movement.id.slice(0, 10)}</Text>
-              <Text style={[styles.cell, styles.notesCell]}>{row.movement.notes || "-"}</Text>
+          {summary.transactions.map((transaction) => (
+            <View key={transaction.id} style={styles.tableRow} wrap={false}>
+              <Text style={[styles.cell, styles.dateCell]}>{formatDate(transaction.date)}</Text>
+              <Text style={[styles.cell, styles.customerCell]}>{transaction.customerNameSnapshot}</Text>
+              <Text style={[styles.cell, styles.typeCell]}>{transferTypeLabels[transaction.type]}</Text>
               <Text style={[styles.cell, styles.moneyCell]}>
-                {row.debit.isZero() ? "-" : formatMoney(row.debit, row.movement.currency)}
+                {formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}
               </Text>
               <Text style={[styles.cell, styles.moneyCell]}>
-                {row.credit.isZero() ? "-" : formatMoney(row.credit, row.movement.currency)}
+                {formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}
               </Text>
-              <Text style={[styles.cell, styles.balanceCell]}>
-                {formatSignedBalance(row.runningBalance, row.movement.currency)}
+              <Text style={[styles.cell, styles.moneyCell]}>
+                {formatMoney(transaction.profitAmount, transaction.profitCurrency)}
+              </Text>
+              <Text style={[styles.cell, styles.statusCell, styles.lastCell]}>
+                {receivedStatusLabels[transaction.receivedStatus]} / {deliveredStatusLabels[transaction.deliveredStatus]} / {transferStatusLabels[transaction.status]}
               </Text>
             </View>
           ))}
         </View>
 
         <Text style={styles.footer}>
-          الرصيد الموجب يعني أن العميل مدين لنا، والرصيد السالب يعني أننا دائنون للعميل. جميع الأرصدة محسوبة من القيود المالية وليست مدخلة يدويا.
+          هذا التقرير مبني على العمليات المسجلة وأسعار كل عملية وقت حفظها. لا يتم استخدام سعر صرف عام أو متغير.
         </Text>
       </Page>
     </Document>

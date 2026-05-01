@@ -1,6 +1,13 @@
 import Decimal from "decimal.js";
 import { z } from "zod";
-import { currencyValues, movementTypeValues, transactionStatusValues } from "@/lib/options";
+import {
+  currencyValues,
+  deliveredStatusValues,
+  movementTypeValues,
+  receivedStatusValues,
+  transactionStatusValues,
+  transferTypeValues,
+} from "@/lib/options";
 
 const requiredText = "هذا الحقل مطلوب";
 
@@ -87,6 +94,74 @@ export const exchangeRateSchema = z.object({
   usdToEgp: decimalString("سعر الدولار مقابل الجنيه"),
   usdToTry: decimalString("سعر الدولار مقابل الليرة"),
   notes: z.string().trim().optional().default(""),
+});
+
+export const transferTransactionSchema = z
+  .object({
+    date: z.coerce.date({ message: "التاريخ غير صحيح" }),
+    customerId: z.string().trim().optional().default(""),
+    customerName: z.string().trim().optional().default(""),
+    quickCustomerName: z.string().trim().optional().default(""),
+    phone: z.string().trim().optional().default(""),
+    createCustomer: z.boolean().optional().default(false),
+    type: z.enum(transferTypeValues),
+    receivedCurrency: z.enum(currencyValues),
+    receivedAmount: decimalString("المبلغ المستلم"),
+    usdToEgp: decimalString("سعر الدولار مقابل الجنيه"),
+    usdToTry: decimalString("سعر الدولار مقابل الليرة"),
+    customerRate: decimalString("السعر الفعلي للعميل"),
+    deliveredCurrency: z.enum(currencyValues),
+    deliveredAmount: decimalString("المبلغ المطلوب تسليمه", { optional: true }),
+    receivedStatus: z.enum(receivedStatusValues),
+    deliveredStatus: z.enum(deliveredStatusValues),
+    notes: z.string().trim().optional().default(""),
+  })
+  .superRefine((value, context) => {
+    const hasCustomer = Boolean(value.customerId || value.customerName || value.quickCustomerName);
+
+    if (!hasCustomer) {
+      context.addIssue({
+        code: "custom",
+        path: ["customerName"],
+        message: "اكتب اسم العميل أو اختر عميلًا موجودًا",
+      });
+    }
+
+    if (new Decimal(value.receivedAmount).lte(0)) {
+      context.addIssue({
+        code: "custom",
+        path: ["receivedAmount"],
+        message: "المبلغ المستلم يجب أن يكون أكبر من صفر",
+      });
+    }
+
+    if (new Decimal(value.usdToEgp).lte(0) || new Decimal(value.usdToTry).lte(0)) {
+      context.addIssue({
+        code: "custom",
+        path: ["usdToEgp"],
+        message: "أسعار الدولار يجب أن تكون أكبر من صفر",
+      });
+    }
+
+    if (new Decimal(value.customerRate).lte(0)) {
+      context.addIssue({
+        code: "custom",
+        path: ["customerRate"],
+        message: "السعر الفعلي يجب أن يكون أكبر من صفر",
+      });
+    }
+
+    if (value.deliveredAmount && new Decimal(value.deliveredAmount).lte(0)) {
+      context.addIssue({
+        code: "custom",
+        path: ["deliveredAmount"],
+        message: "المبلغ المطلوب تسليمه يجب أن يكون أكبر من صفر",
+      });
+    }
+  });
+
+export const transferTransactionUpdateSchema = transferTransactionSchema.extend({
+  status: z.enum(["OPEN", "COMPLETED", "CANCELLED"]).optional(),
 });
 
 export const customerStatementQuerySchema = z.object({

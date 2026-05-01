@@ -26,19 +26,85 @@ enum TransactionStatus {
   SETTLED
 }
 
+enum TransferType {
+  EGYPT_TO_TURKEY
+  TURKEY_TO_EGYPT
+}
+
+enum TransferStepStatus {
+  RECEIVED
+  NOT_RECEIVED
+  DELIVERED
+  NOT_DELIVERED
+}
+
+enum ReceivedTransferStatus {
+  RECEIVED
+  NOT_RECEIVED
+}
+
+enum DeliveredTransferStatus {
+  DELIVERED
+  NOT_DELIVERED
+}
+
+enum TransferStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
 model Customer {
-  id                String             @id @default(cuid())
-  name              String
-  phone             String?
-  country           String?
-  notes             String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  movements         FinancialMovement[]
-  transactionGroups TransactionGroup[]
+  id                   String                @id @default(cuid())
+  name                 String
+  phone                String?
+  country              String?
+  notes                String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  movements            FinancialMovement[]
+  transactionGroups    TransactionGroup[]
+  transferTransactions TransferTransaction[]
 
   @@index([name])
   @@index([phone])
+}
+
+model TransferTransaction {
+  id                      String                  @id @default(cuid())
+  date                    DateTime                @default(now())
+  customerId              String?
+  customer                Customer?               @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerNameSnapshot    String
+  customerPhoneSnapshot   String?
+  type                    TransferType
+  receivedCurrency        Currency
+  receivedAmount          Decimal                 @db.Decimal(18, 4)
+  deliveredCurrency       Currency
+  deliveredAmount         Decimal                 @db.Decimal(18, 4)
+  usdToEgp                Decimal                 @db.Decimal(18, 8)
+  usdToTry                Decimal                 @db.Decimal(18, 8)
+  theoreticalRate         Decimal                 @db.Decimal(18, 8)
+  customerRate            Decimal                 @db.Decimal(18, 8)
+  profitCurrency          Currency
+  profitAmount            Decimal                 @db.Decimal(18, 4)
+  receivedStatus          ReceivedTransferStatus  @default(RECEIVED)
+  deliveredStatus         DeliveredTransferStatus @default(NOT_DELIVERED)
+  status                  TransferStatus          @default(OPEN)
+  isDeliveredAmountManual Boolean                 @default(false)
+  notes                   String?
+  cancelledAt             DateTime?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  @@index([date])
+  @@index([customerId])
+  @@index([type])
+  @@index([receivedCurrency])
+  @@index([deliveredCurrency])
+  @@index([receivedStatus])
+  @@index([deliveredStatus])
+  @@index([status])
 }
 
 model FinancialMovement {

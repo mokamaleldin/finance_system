@@ -32,3 +32,17 @@ export async function PATCH(request: Request, context: RouteContext) {
     return serverErrorResponse(error);
   }
 }
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  const authError = await requireApiAuth();
+  if (authError) return authError;
+
+  const { id } = await context.params;
+
+  try {
+    await prisma.customer.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return serverErrorResponse(error);
+  }
+}

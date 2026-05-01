@@ -2,21 +2,18 @@ import {
   Banknote,
   BarChart3,
   Gauge,
-  ReceiptText,
   Repeat,
-  TrendingUp,
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
 
 const links = [
   { href: "/dashboard", label: "لوحة التحكم", icon: Gauge },
+  { href: "/dashboard/transactions/new", label: "معاملة جديدة", icon: Banknote },
+  { href: "/dashboard/transactions", label: "سجل المعاملات", icon: Repeat },
+  { href: "/dashboard/open", label: "المتبقي علينا ولنا", icon: BarChart3 },
   { href: "/dashboard/customers", label: "العملاء", icon: UserRound },
-  { href: "/dashboard/movements/new", label: "حركة جديدة", icon: Banknote },
-  { href: "/dashboard/movements", label: "الحركات المالية", icon: ReceiptText },
-  { href: "/dashboard/transactions", label: "المعاملات", icon: Repeat },
-  { href: "/dashboard/rates", label: "أسعار الصرف", icon: TrendingUp },
-  { href: "/dashboard/reports/daily", label: "التقارير", icon: BarChart3 },
+  { href: "/dashboard/reports/daily", label: "تقرير اليوم", icon: BarChart3 },
 ];
 
 export function Sidebar() {
