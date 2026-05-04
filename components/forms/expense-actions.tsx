@@ -4,22 +4,20 @@ import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function DeleteCustomerButton({ customerId }: { customerId: string }) {
+export function DeleteExpenseButton({ expenseId }: { expenseId: string }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   async function remove() {
-    const confirmed = window.confirm(
-      "سيتم حذف العميل من القائمة، وستبقى العمليات القديمة محفوظة باسم العميل وقت العملية. هل تريد المتابعة؟",
-    );
+    const confirmed = window.confirm("سيتم حذف المصروف نهائيًا. هل تريد المتابعة؟");
     if (!confirmed) return;
 
     setIsLoading(true);
-    const response = await fetch(`/api/customers/${customerId}`, { method: "DELETE" });
+    const response = await fetch(`/api/expenses/${expenseId}`, { method: "DELETE" });
     setIsLoading(false);
 
     if (!response.ok) {
-      alert("تعذر حذف العميل");
+      alert("تعذر حذف المصروف");
       return;
     }
 

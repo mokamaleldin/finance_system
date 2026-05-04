@@ -18,6 +18,10 @@ const statusPatchSchema = z.object({
   deliveredStatus: z.enum(deliveredStatusValues).optional(),
 });
 
+const cancelSchema = z.object({
+  cancellationReason: z.string().trim().optional().default(""),
+});
+
 export async function PATCH(request: Request, context: RouteContext) {
   const authError = await requireApiAuth();
   if (authError) return authError;
@@ -48,14 +52,17 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   const authError = await requireApiAuth();
   if (authError) return authError;
 
   const { id } = await context.params;
+  const payload = await request.json().catch(() => ({}));
+  const parsed = cancelSchema.safeParse(payload);
+  if (!parsed.success) return validationErrorResponse(parsed.error);
 
   try {
-    const transaction = await cancelTransferTransaction(id);
+    const transaction = await cancelTransferTransaction(id, parsed.data.cancellationReason);
     return NextResponse.json({ transaction });
   } catch (error) {
     return serverErrorResponse(error);

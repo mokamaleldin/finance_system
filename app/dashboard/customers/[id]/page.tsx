@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { currencies } from "@/lib/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import {
+  currencyLabels,
   deliveredStatusLabels,
   receivedStatusLabels,
   transferStatusLabels,
@@ -32,7 +33,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         <Link
           href={`/api/statements/customer/${summary.customer.id}`}
           target="_blank"
-          className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white hover:bg-olive"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white hover:bg-olive sm:w-auto"
         >
           <FileText className="h-4 w-4" />
           تصدير PDF
@@ -42,8 +43,8 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="بيانات العميل">
           <dl className="grid gap-3 text-sm">
-            <div className="flex justify-between gap-4"><dt className="text-muted">الهاتف</dt><dd className="font-semibold">{summary.customer.phone || "-"}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">ملاحظات</dt><dd className="font-semibold">{summary.customer.notes || "-"}</dd></div>
+            <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">الهاتف</dt><dd className="font-semibold">{summary.customer.phone || "-"}</dd></div>
+            <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">ملاحظات</dt><dd className="font-semibold">{summary.customer.notes || "-"}</dd></div>
           </dl>
         </Card>
         <Card title="تعديل بيانات العميل" className="lg:col-span-2">
@@ -63,8 +64,8 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         <Card title="إجمالي ما استلمناه منه">
           <div className="grid gap-2">
             {currencies.map((currency) => (
-              <div key={currency} className="flex justify-between rounded-lg bg-paper px-3 py-2">
-                <span>{currency}</span>
+              <div key={currency} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-paper px-3 py-2">
+                <span>{currencyLabels[currency]}</span>
                 <strong>{formatMoney(summary.receivedTotals[currency], currency)}</strong>
               </div>
             ))}
@@ -73,8 +74,8 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         <Card title="إجمالي ما سلمناه له">
           <div className="grid gap-2">
             {currencies.map((currency) => (
-              <div key={currency} className="flex justify-between rounded-lg bg-paper px-3 py-2">
-                <span>{currency}</span>
+              <div key={currency} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-paper px-3 py-2">
+                <span>{currencyLabels[currency]}</span>
                 <strong>{formatMoney(summary.deliveredTotals[currency], currency)}</strong>
               </div>
             ))}
@@ -83,8 +84,8 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         <Card title="إجمالي الربح">
           <div className="grid gap-2">
             {currencies.map((currency) => (
-              <div key={currency} className="flex justify-between rounded-lg bg-mint px-3 py-2">
-                <span>{currency}</span>
+              <div key={currency} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-mint px-3 py-2">
+                <span>{currencyLabels[currency]}</span>
                 <strong>{formatMoney(summary.profitTotals[currency], currency)}</strong>
               </div>
             ))}
@@ -93,21 +94,21 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="باقي علينا لهذا العميل">
+        <Card title="علينا له">
           <div className="grid gap-2">
             {currencies.map((currency) => (
-              <div key={currency} className="flex justify-between rounded-lg bg-mint px-3 py-2">
-                <span>{currency}</span>
+              <div key={currency} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-mint px-3 py-2">
+                <span>{currencyLabels[currency]}</span>
                 <strong>{formatMoney(summary.open.oweCustomer[currency], currency)}</strong>
               </div>
             ))}
           </div>
         </Card>
-        <Card title="باقي لنا عند هذا العميل">
+        <Card title="لنا عنده">
           <div className="grid gap-2">
             {currencies.map((currency) => (
-              <div key={currency} className="flex justify-between rounded-lg bg-paper px-3 py-2">
-                <span>{currency}</span>
+              <div key={currency} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-paper px-3 py-2">
+                <span>{currencyLabels[currency]}</span>
                 <strong>{formatMoney(summary.open.customerOwesUs[currency], currency)}</strong>
               </div>
             ))}
@@ -119,41 +120,80 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         {summary.transactions.length === 0 ? (
           <EmptyState title="لا توجد عمليات لهذا العميل" />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-sm">
-              <thead>
-                <tr className="border-b border-line text-right text-muted">
-                  <th className="py-3 font-semibold">التاريخ</th>
-                  <th className="py-3 font-semibold">نوع العملية</th>
-                  <th className="py-3 font-semibold">استلمنا</th>
-                  <th className="py-3 font-semibold">سلمنا / مطلوب</th>
-                  <th className="py-3 font-semibold">الربح</th>
-                  <th className="py-3 font-semibold">الاستلام</th>
-                  <th className="py-3 font-semibold">التسليم</th>
-                  <th className="py-3 font-semibold">الحالة</th>
-                  <th className="py-3 font-semibold">فتح</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.transactions.map((transaction) => (
-                  <tr key={transaction.id} className="border-b border-line/70">
-                    <td className="py-3">{formatDate(transaction.date)}</td>
-                    <td className="py-3">{transferTypeLabels[transaction.type]}</td>
-                    <td className="py-3">{formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}</td>
-                    <td className="py-3">{formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}</td>
-                    <td className="py-3">{formatMoney(transaction.profitAmount, transaction.profitCurrency)}</td>
-                    <td className="py-3"><Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge></td>
-                    <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
-                    <td className="py-3"><Badge tone={transaction.status === "COMPLETED" ? "success" : "warning"}>{transferStatusLabels[transaction.status]}</Badge></td>
-                    <td className="py-3">
-                      <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
-                        عرض
-                      </Link>
-                    </td>
+          <div>
+            <div className="grid gap-3 md:hidden">
+              {summary.transactions.map((transaction) => (
+                <div key={transaction.id} className="rounded-lg border border-line bg-paper p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-ink">{transferTypeLabels[transaction.type]}</p>
+                      <p className="mt-1 text-xs text-muted">{formatDate(transaction.date)}</p>
+                    </div>
+                    <Badge tone={transaction.status === "COMPLETED" ? "success" : "warning"}>{transferStatusLabels[transaction.status]}</Badge>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">استلمنا</span>
+                      <strong>{formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}</strong>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">سنسلم</span>
+                      <strong>{formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}</strong>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">الربح</span>
+                      <strong>{formatMoney(transaction.profitAmount, transaction.profitCurrency)}</strong>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-1">
+                      <Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge>
+                      <Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge>
+                    </div>
+                    <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink hover:bg-mint">
+                      عرض
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[1000px] text-sm">
+                <thead>
+                  <tr className="border-b border-line text-right text-muted">
+                    <th className="py-3 font-semibold">التاريخ</th>
+                    <th className="py-3 font-semibold">نوع العملية</th>
+                    <th className="py-3 font-semibold">استلمنا</th>
+                    <th className="py-3 font-semibold">سلمنا / مطلوب</th>
+                    <th className="py-3 font-semibold">الربح</th>
+                    <th className="py-3 font-semibold">الاستلام</th>
+                    <th className="py-3 font-semibold">التسليم</th>
+                    <th className="py-3 font-semibold">الحالة</th>
+                    <th className="py-3 font-semibold">فتح</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {summary.transactions.map((transaction) => (
+                    <tr key={transaction.id} className="border-b border-line/70">
+                      <td className="py-3">{formatDate(transaction.date)}</td>
+                      <td className="py-3">{transferTypeLabels[transaction.type]}</td>
+                      <td className="py-3">{formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}</td>
+                      <td className="py-3">{formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}</td>
+                      <td className="py-3">{formatMoney(transaction.profitAmount, transaction.profitCurrency)}</td>
+                      <td className="py-3"><Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge></td>
+                      <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
+                      <td className="py-3"><Badge tone={transaction.status === "COMPLETED" ? "success" : "warning"}>{transferStatusLabels[transaction.status]}</Badge></td>
+                      <td className="py-3">
+                        <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
+                          عرض
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </Card>

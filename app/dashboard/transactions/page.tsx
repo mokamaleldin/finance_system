@@ -4,8 +4,9 @@ import { CancelTransactionButton } from "@/components/forms/transaction-actions"
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDate, formatDateInput, formatMoney, parseOptionalDateParam } from "@/lib/format";
+import { formatDate, formatDateInput, formatDecimal, formatMoney, parseOptionalDateParam } from "@/lib/format";
 import {
+  currencyLabels,
   currencyValues,
   deliveredStatusLabels,
   deliveredStatusValues,
@@ -39,6 +40,8 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const customerId = typeof params.customerId === "string" ? params.customerId : "";
   const type = pick(params.type, transferTypeValues) as TransferTypeCode | undefined;
   const currency = pick(params.currency, currencyValues) as CurrencyCode | undefined;
+  const receivedCurrency = pick(params.receivedCurrency, currencyValues) as CurrencyCode | undefined;
+  const deliveredCurrency = pick(params.deliveredCurrency, currencyValues) as CurrencyCode | undefined;
   const status = pick(params.status, transferStatusValues) as TransferStatusCode | undefined;
   const receivedStatus = pick(params.receivedStatus, receivedStatusValues) as ReceivedStatusCode | undefined;
   const deliveredStatus = pick(params.deliveredStatus, deliveredStatusValues) as DeliveredStatusCode | undefined;
@@ -51,6 +54,8 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
       customerId: customerId || undefined,
       type,
       currency,
+      receivedCurrency,
+      deliveredCurrency,
       status,
       receivedStatus,
       deliveredStatus,
@@ -64,21 +69,21 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
           <h2 className="text-2xl font-bold text-ink">سجل المعاملات</h2>
           <p className="mt-1 text-sm text-muted">كل عمليات التحويل مع حالة الاستلام والتسليم والربح.</p>
         </div>
-        <Link href="/dashboard/transactions/new" className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white hover:bg-olive">
+        <Link href="/dashboard/transactions/new" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white hover:bg-olive sm:w-auto">
           <PlusCircle className="h-4 w-4" />
           معاملة جديدة
         </Link>
       </div>
 
       <Card title="الفلاتر">
-        <form className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
+        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <div>
             <label className="text-sm font-semibold text-ink">من تاريخ</label>
-            <input name="from" type="date" defaultValue={from ? formatDateInput(from) : ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2" />
+            <input name="from" type="date" dir="ltr" defaultValue={from ? formatDateInput(from) : ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2" />
           </div>
           <div>
             <label className="text-sm font-semibold text-ink">إلى تاريخ</label>
-            <input name="to" type="date" defaultValue={to ? formatDateInput(to) : ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2" />
+            <input name="to" type="date" dir="ltr" defaultValue={to ? formatDateInput(to) : ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2" />
           </div>
           <div>
             <label className="text-sm font-semibold text-ink">العميل/التاجر</label>
@@ -100,7 +105,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
             <label className="text-sm font-semibold text-ink">العملة</label>
             <select name="currency" defaultValue={currency || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
               <option value="">الكل</option>
-              {currencyValues.map((item) => <option key={item} value={item}>{item}</option>)}
+              {currencyValues.map((item) => <option key={item} value={item}>{currencyLabels[item]}</option>)}
             </select>
           </div>
           <div>
@@ -110,8 +115,22 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
               {transferStatusValues.map((item) => <option key={item} value={item}>{transferStatusLabels[item]}</option>)}
             </select>
           </div>
-          <div className="flex items-end">
+          <div className="flex items-end sm:col-span-2 lg:col-span-1">
             <button className="w-full rounded-lg bg-ink px-4 py-2.5 font-semibold text-white">تطبيق</button>
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-ink">عملة استلمناها</label>
+            <select name="receivedCurrency" defaultValue={receivedCurrency || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
+              <option value="">الكل</option>
+              {currencyValues.map((item) => <option key={item} value={item}>{currencyLabels[item]}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-ink">عملة سنسلمها</label>
+            <select name="deliveredCurrency" defaultValue={deliveredCurrency || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
+              <option value="">الكل</option>
+              {currencyValues.map((item) => <option key={item} value={item}>{currencyLabels[item]}</option>)}
+            </select>
           </div>
           <div>
             <label className="text-sm font-semibold text-ink">الاستلام</label>
@@ -134,55 +153,115 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
         {transactions.length === 0 ? (
           <EmptyState title="لا توجد معاملات مطابقة" />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-sm">
-              <thead>
-                <tr className="border-b border-line text-right text-muted">
-                  <th className="py-3 font-semibold">التاريخ</th>
-                  <th className="py-3 font-semibold">العميل</th>
-                  <th className="py-3 font-semibold">النوع</th>
-                  <th className="py-3 font-semibold">استلمنا</th>
-                  <th className="py-3 font-semibold">سلمنا / مطلوب</th>
-                  <th className="py-3 font-semibold">ربح العملية</th>
-                  <th className="py-3 font-semibold">الاستلام</th>
-                  <th className="py-3 font-semibold">التسليم</th>
-                  <th className="py-3 font-semibold">الحالة</th>
-                  <th className="py-3 font-semibold">إجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((transaction) => (
-                  <tr key={transaction.id} className="border-b border-line/70">
-                    <td className="py-3">{formatDate(transaction.date)}</td>
-                    <td className="py-3 font-semibold">{transaction.customerNameSnapshot}</td>
-                    <td className="py-3">{transferTypeLabels[transaction.type]}</td>
-                    <td className="py-3">{formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}</td>
-                    <td className="py-3">{formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}</td>
-                    <td className="py-3">{formatMoney(transaction.profitAmount, transaction.profitCurrency)}</td>
-                    <td className="py-3"><Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge></td>
-                    <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
-                    <td className="py-3">
-                      <Badge tone={transaction.status === "COMPLETED" ? "success" : transaction.status === "CANCELLED" ? "danger" : "warning"}>
-                        {transferStatusLabels[transaction.status]}
-                      </Badge>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Link href={`/dashboard/transactions/${transaction.id}`} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
-                          <Eye className="h-3.5 w-3.5" />
-                          عرض
-                        </Link>
-                        <Link href={`/dashboard/transactions/${transaction.id}/edit`} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
-                          <Pencil className="h-3.5 w-3.5" />
-                          تعديل
-                        </Link>
-                        {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} /> : null}
-                      </div>
-                    </td>
+          <div>
+            <div className="grid gap-3 md:hidden">
+              {transactions.map((transaction) => (
+                <div key={transaction.id} className="rounded-lg border border-line bg-paper p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-ink">{transaction.customerNameSnapshot}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        {formatDate(transaction.date)} - {transferTypeLabels[transaction.type]}
+                      </p>
+                    </div>
+                    <Badge tone={transaction.status === "COMPLETED" ? "success" : transaction.status === "CANCELLED" ? "danger" : "warning"}>
+                      {transferStatusLabels[transaction.status]}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">استلمنا</span>
+                      <strong>{formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}</strong>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">سنسلم</span>
+                      <strong>{formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}</strong>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">سعر العميل</span>
+                      <strong>{formatDecimal(transaction.customerRate)}</strong>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">الربح</span>
+                      <strong>{formatMoney(transaction.profitAmount, transaction.profitCurrency)}</strong>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    <Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge>
+                    <Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link href={`/dashboard/transactions/${transaction.id}`} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-line bg-white px-2 py-2 text-xs font-semibold text-ink hover:bg-mint">
+                      <Eye className="h-3.5 w-3.5" />
+                      عرض
+                    </Link>
+                    <Link href={`/dashboard/transactions/${transaction.id}/edit`} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-line bg-white px-2 py-2 text-xs font-semibold text-ink hover:bg-mint">
+                      <Pencil className="h-3.5 w-3.5" />
+                      تعديل
+                    </Link>
+                    {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} /> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[1250px] text-sm">
+                <thead>
+                  <tr className="border-b border-line text-right text-muted">
+                    <th className="py-3 font-semibold">التاريخ</th>
+                    <th className="py-3 font-semibold">العميل</th>
+                    <th className="py-3 font-semibold">النوع</th>
+                    <th className="py-3 font-semibold">استلمنا</th>
+                    <th className="py-3 font-semibold">سلمنا / مطلوب</th>
+                    <th className="py-3 font-semibold">سعر التكلفة</th>
+                    <th className="py-3 font-semibold">سعر العميل</th>
+                    <th className="py-3 font-semibold">ربح العملية</th>
+                    <th className="py-3 font-semibold">الاستلام</th>
+                    <th className="py-3 font-semibold">التسليم</th>
+                    <th className="py-3 font-semibold">الحالة</th>
+                    <th className="py-3 font-semibold">إجراءات</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {transactions.map((transaction) => (
+                    <tr key={transaction.id} className="border-b border-line/70">
+                      <td className="py-3">{formatDate(transaction.date)}</td>
+                      <td className="py-3 font-semibold">{transaction.customerNameSnapshot}</td>
+                      <td className="py-3">{transferTypeLabels[transaction.type]}</td>
+                      <td className="py-3">{formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}</td>
+                      <td className="py-3">{formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}</td>
+                      <td className="py-3">{formatDecimal(transaction.costRate)}</td>
+                      <td className="py-3">{formatDecimal(transaction.customerRate)}</td>
+                      <td className="py-3">{formatMoney(transaction.profitAmount, transaction.profitCurrency)}</td>
+                      <td className="py-3"><Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge></td>
+                      <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
+                      <td className="py-3">
+                        <Badge tone={transaction.status === "COMPLETED" ? "success" : transaction.status === "CANCELLED" ? "danger" : "warning"}>
+                          {transferStatusLabels[transaction.status]}
+                        </Badge>
+                      </td>
+                      <td className="py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <Link href={`/dashboard/transactions/${transaction.id}`} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
+                            <Eye className="h-3.5 w-3.5" />
+                            عرض
+                          </Link>
+                          <Link href={`/dashboard/transactions/${transaction.id}/edit`} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
+                            <Pencil className="h-3.5 w-3.5" />
+                            تعديل
+                          </Link>
+                          {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} /> : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </Card>

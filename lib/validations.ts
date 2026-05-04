@@ -2,7 +2,10 @@ import Decimal from "decimal.js";
 import { z } from "zod";
 import {
   currencyValues,
+  commissionBaseValues,
+  commissionTypeValues,
   deliveredStatusValues,
+  expenseCategoryValues,
   movementTypeValues,
   receivedStatusValues,
   transactionStatusValues,
@@ -105,16 +108,27 @@ export const transferTransactionSchema = z
     phone: z.string().trim().optional().default(""),
     createCustomer: z.boolean().optional().default(false),
     type: z.enum(transferTypeValues),
+    receiveLocation: z.string().trim().optional().default(""),
+    deliverLocation: z.string().trim().optional().default(""),
     receivedCurrency: z.enum(currencyValues),
     receivedAmount: decimalString("المبلغ المستلم"),
-    usdToEgp: decimalString("سعر الدولار مقابل الجنيه"),
-    usdToTry: decimalString("سعر الدولار مقابل الليرة"),
-    customerRate: decimalString("السعر الفعلي للعميل"),
+    usdRates: z.record(z.string(), z.string().trim()).optional().default({}),
+    usdToEgp: decimalString("سعر الدولار مقابل الجنيه", { optional: true }),
+    usdToTry: decimalString("سعر الدولار مقابل الليرة", { optional: true }),
+    costRate: decimalString("سعر التكلفة", { optional: true }),
+    customerRate: decimalString("سعر العميل"),
     deliveredCurrency: z.enum(currencyValues),
     deliveredAmount: decimalString("المبلغ المطلوب تسليمه", { optional: true }),
     receivedStatus: z.enum(receivedStatusValues),
     deliveredStatus: z.enum(deliveredStatusValues),
     notes: z.string().trim().optional().default(""),
+    commissionEnabled: z.boolean().optional().default(false),
+    commissionPersonName: z.string().trim().optional().default(""),
+    commissionType: z.enum(commissionTypeValues).optional().default("FIXED"),
+    commissionBase: z.enum(commissionBaseValues).optional().default("RECEIVED_AMOUNT"),
+    commissionValue: decimalString("قيمة العمولة", { optional: true }),
+    commissionCurrency: z.enum(currencyValues).optional().default("EGP"),
+    commissionNotes: z.string().trim().optional().default(""),
   })
   .superRefine((value, context) => {
     const hasCustomer = Boolean(value.customerId || value.customerName || value.quickCustomerName);
@@ -135,12 +149,29 @@ export const transferTransactionSchema = z
       });
     }
 
-    if (new Decimal(value.usdToEgp).lte(0) || new Decimal(value.usdToTry).lte(0)) {
+    if (value.receivedCurrency === value.deliveredCurrency) {
       context.addIssue({
         code: "custom",
-        path: ["usdToEgp"],
-        message: "أسعار الدولار يجب أن تكون أكبر من صفر",
+        path: ["deliveredCurrency"],
+        message: "اختر عملتين مختلفتين للعملية",
       });
+    }
+
+    for (const currency of [value.receivedCurrency, value.deliveredCurrency]) {
+      if (currency === "USD") continue;
+
+      const rate =
+        value.usdRates[currency] ||
+        (currency === "EGP" ? value.usdToEgp : "") ||
+        (currency === "TRY" ? value.usdToTry : "");
+
+      if (!rate || new Decimal(rate).lte(0)) {
+        context.addIssue({
+          code: "custom",
+          path: ["usdRates"],
+          message: `أدخل سعر ${currency} مقابل الدولار`,
+        });
+      }
     }
 
     if (new Decimal(value.customerRate).lte(0)) {
@@ -158,6 +189,16 @@ export const transferTransactionSchema = z
         message: "المبلغ المطلوب تسليمه يجب أن يكون أكبر من صفر",
       });
     }
+
+    if (value.commissionEnabled) {
+      if (!value.commissionValue || new Decimal(value.commissionValue).lte(0)) {
+        context.addIssue({
+          code: "custom",
+          path: ["commissionValue"],
+          message: "قيمة العمولة يجب أن تكون أكبر من صفر",
+        });
+      }
+    }
   });
 
 export const transferTransactionUpdateSchema = transferTransactionSchema.extend({
@@ -169,6 +210,25 @@ export const customerStatementQuerySchema = z.object({
   to: z.coerce.date().optional(),
   currency: z.enum(currencyValues).optional(),
 });
+
+export const expenseSchema = z
+  .object({
+    date: z.coerce.date({ message: "التاريخ غير صحيح" }),
+    category: z.enum(expenseCategoryValues),
+    description: z.string().trim().min(2, "الوصف مطلوب"),
+    amount: decimalString("المبلغ"),
+    currencyCode: z.enum(currencyValues),
+    notes: z.string().trim().optional().default(""),
+  })
+  .superRefine((value, context) => {
+    if (new Decimal(value.amount).lte(0)) {
+      context.addIssue({
+        code: "custom",
+        path: ["amount"],
+        message: "المبلغ يجب أن يكون أكبر من صفر",
+      });
+    }
+  });
 
 export function nullableString(value: string | undefined | null) {
   if (!value) {

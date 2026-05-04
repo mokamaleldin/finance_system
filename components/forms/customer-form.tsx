@@ -71,7 +71,7 @@ export function CustomerForm({ customerId, initialValues, onSavedPath }: Custome
         </div>
         <div>
           <label className="text-sm font-semibold text-ink">الهاتف</label>
-          <input className="mt-2 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("phone")} />
+          <input dir="ltr" inputMode="tel" className="mt-2 w-full rounded-lg border border-line px-3 py-2 text-left outline-none focus:border-olive" {...register("phone")} />
         </div>
         <div>
           <label className="text-sm font-semibold text-ink">الدولة</label>
@@ -88,7 +88,7 @@ export function CustomerForm({ customerId, initialValues, onSavedPath }: Custome
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex w-fit items-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white transition hover:bg-olive disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white transition hover:bg-olive disabled:opacity-60 sm:w-fit"
       >
         <Save className="h-4 w-4" />
         {customerId ? "حفظ التعديل" : "إضافة العميل"}

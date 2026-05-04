@@ -18,6 +18,7 @@ enum Currency {
   EGP
   USD
   TRY
+  EUR
 }
 
 enum TransactionStatus {
@@ -27,8 +28,10 @@ enum TransactionStatus {
 }
 
 enum TransferType {
+  TRANSFER
   EGYPT_TO_TURKEY
   TURKEY_TO_EGYPT
+  DIRECT_EXCHANGE
 }
 
 enum TransferStepStatus {
@@ -52,6 +55,25 @@ enum TransferStatus {
   OPEN
   COMPLETED
   CANCELLED
+}
+
+enum ExpenseCategory {
+  RENT
+  HOSPITALITY
+  TRANSPORTATION
+  INTERNET
+  OPERATIONS
+  OTHER
+}
+
+enum CommissionType {
+  FIXED
+  PERCENTAGE
+}
+
+enum CommissionBase {
+  RECEIVED_AMOUNT
+  PROFIT
 }
 
 model Customer {
@@ -78,14 +100,21 @@ model TransferTransaction {
   customerNameSnapshot    String
   customerPhoneSnapshot   String?
   type                    TransferType
+  receiveLocation         String?
+  deliverLocation         String?
   receivedCurrency        Currency
   receivedAmount          Decimal                 @db.Decimal(18, 4)
   deliveredCurrency       Currency
   deliveredAmount         Decimal                 @db.Decimal(18, 4)
-  usdToEgp                Decimal                 @db.Decimal(18, 8)
-  usdToTry                Decimal                 @db.Decimal(18, 8)
+  usdRates                Json?
+  usdToEgp                Decimal?                @db.Decimal(18, 8)
+  usdToTry                Decimal?                @db.Decimal(18, 8)
+  rateBaseCurrency        Currency?
+  rateQuoteCurrency       Currency?
+  costRate                Decimal                 @default(1) @db.Decimal(18, 8)
   theoreticalRate         Decimal                 @db.Decimal(18, 8)
   customerRate            Decimal                 @db.Decimal(18, 8)
+  rateDifference          Decimal                 @default(0) @db.Decimal(18, 8)
   profitCurrency          Currency
   profitAmount            Decimal                 @db.Decimal(18, 4)
   receivedStatus          ReceivedTransferStatus  @default(RECEIVED)
@@ -94,8 +123,10 @@ model TransferTransaction {
   isDeliveredAmountManual Boolean                 @default(false)
   notes                   String?
   cancelledAt             DateTime?
+  cancellationReason      String?
   createdAt               DateTime                @default(now())
   updatedAt               DateTime                @updatedAt
+  commission              Commission?
 
   @@index([date])
   @@index([customerId])
@@ -105,6 +136,41 @@ model TransferTransaction {
   @@index([receivedStatus])
   @@index([deliveredStatus])
   @@index([status])
+}
+
+model Expense {
+  id           String          @id @default(cuid())
+  date         DateTime
+  category     ExpenseCategory
+  description  String
+  amount       Decimal         @db.Decimal(18, 4)
+  currencyCode Currency
+  notes        String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([date])
+  @@index([category])
+  @@index([currencyCode])
+}
+
+model Commission {
+  id            String              @id @default(cuid())
+  transactionId String              @unique
+  transaction   TransferTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  personName    String?
+  type          CommissionType
+  base          CommissionBase
+  value         Decimal             @db.Decimal(18, 8)
+  amount        Decimal             @db.Decimal(18, 4)
+  currencyCode  Currency
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([currencyCode])
+  @@index([type])
+  @@index([base])
 }
 
 model FinancialMovement {

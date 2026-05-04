@@ -1,32 +1,18 @@
-import {
-  Banknote,
-  BarChart3,
-  Gauge,
-  Repeat,
-  UserRound,
-} from "lucide-react";
 import Link from "next/link";
-
-const links = [
-  { href: "/dashboard", label: "لوحة التحكم", icon: Gauge },
-  { href: "/dashboard/transactions/new", label: "معاملة جديدة", icon: Banknote },
-  { href: "/dashboard/transactions", label: "سجل المعاملات", icon: Repeat },
-  { href: "/dashboard/open", label: "المتبقي علينا ولنا", icon: BarChart3 },
-  { href: "/dashboard/customers", label: "العملاء", icon: UserRound },
-  { href: "/dashboard/reports/daily", label: "تقرير اليوم", icon: BarChart3 },
-];
+import { navigationLinks } from "@/components/layout/nav-links";
+import { appBranding } from "@/lib/branding";
 
 export function Sidebar() {
   return (
-    <aside className="no-print border-l border-line bg-ink text-white lg:fixed lg:inset-y-0 lg:right-0 lg:w-64">
+    <aside className="no-print hidden border-l border-line bg-ink text-white lg:fixed lg:inset-y-0 lg:right-0 lg:flex lg:w-64">
       <div className="flex h-full flex-col p-4">
         <Link href="/dashboard" className="rounded-lg px-3 py-4">
-          <p className="text-xl font-bold">دفتر الصرافة</p>
-          <p className="mt-1 text-sm text-white/70">مصر وتركيا</p>
+          <p className="text-xl font-bold">{appBranding.name}</p>
+          <p className="mt-1 text-sm text-white/70">{appBranding.tagline}</p>
         </Link>
 
         <nav className="mt-6 grid gap-1">
-          {links.map((link) => {
+          {navigationLinks.map((link) => {
             const Icon = link.icon;
             return (
               <Link

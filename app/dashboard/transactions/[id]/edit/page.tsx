@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { TransferTransactionForm } from "@/components/forms/transfer-transaction-form";
-import { Card } from "@/components/ui/card";
 import { formatDateInput } from "@/lib/format";
+import type { CurrencyCode } from "@/lib/options";
 import { prisma } from "@/lib/prisma";
 
 type EditTransactionPageProps = {
@@ -11,13 +11,21 @@ type EditTransactionPageProps = {
 export default async function EditTransactionPage({ params }: EditTransactionPageProps) {
   const { id } = await params;
   const [transaction, customers] = await Promise.all([
-    prisma.transferTransaction.findUnique({ where: { id } }),
+    prisma.transferTransaction.findUnique({ where: { id }, include: { commission: true } }),
     prisma.customer.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   if (!transaction) {
     notFound();
   }
+  const usdRates = {
+    ...(typeof transaction.usdRates === "object" && transaction.usdRates && !Array.isArray(transaction.usdRates)
+      ? transaction.usdRates
+      : {}),
+    ...(transaction.usdToEgp ? { EGP: transaction.usdToEgp.toString() } : {}),
+    ...(transaction.usdToTry ? { TRY: transaction.usdToTry.toString() } : {}),
+    USD: "1",
+  } as Record<CurrencyCode, string>;
 
   return (
     <div className="grid gap-6">
@@ -26,30 +34,34 @@ export default async function EditTransactionPage({ params }: EditTransactionPag
         <p className="mt-1 text-sm text-muted">سيتم إعادة حساب المبلغ والربح حسب الأسعار والحالات المدخلة.</p>
       </div>
 
-      <Card title="بيانات العملية">
-        <TransferTransactionForm
-          transactionId={transaction.id}
-          customers={customers.map((customer) => ({ id: customer.id, name: customer.name, phone: customer.phone }))}
-          initialValues={{
-            date: formatDateInput(transaction.date),
-            customerId: transaction.customerId || "",
-            customerName: transaction.customerNameSnapshot,
-            quickCustomerName: transaction.customerId ? "" : transaction.customerNameSnapshot,
-            phone: transaction.customerPhoneSnapshot || "",
-            type: transaction.type,
-            receivedCurrency: transaction.receivedCurrency,
-            receivedAmount: transaction.receivedAmount.toString(),
-            usdToEgp: transaction.usdToEgp.toString(),
-            usdToTry: transaction.usdToTry.toString(),
-            customerRate: transaction.customerRate.toString(),
-            deliveredCurrency: transaction.deliveredCurrency,
-            deliveredAmount: transaction.isDeliveredAmountManual ? transaction.deliveredAmount.toString() : "",
-            receivedStatus: transaction.receivedStatus === "NOT_RECEIVED" ? "NOT_RECEIVED" : "RECEIVED",
-            deliveredStatus: transaction.deliveredStatus === "DELIVERED" ? "DELIVERED" : "NOT_DELIVERED",
-            notes: transaction.notes || "",
-          }}
-        />
-      </Card>
+      <TransferTransactionForm
+        transactionId={transaction.id}
+        customers={customers.map((customer) => ({ id: customer.id, name: customer.name, phone: customer.phone }))}
+        initialValues={{
+          date: formatDateInput(transaction.date),
+          customerId: transaction.customerId || "",
+          customerName: transaction.customerNameSnapshot,
+          quickCustomerName: transaction.customerId ? "" : transaction.customerNameSnapshot,
+          phone: transaction.customerPhoneSnapshot || "",
+          type: transaction.type,
+          receivedCurrency: transaction.receivedCurrency,
+          receivedAmount: transaction.receivedAmount.toString(),
+          usdRates,
+          customerRate: transaction.customerRate.toString(),
+          deliveredCurrency: transaction.deliveredCurrency,
+          deliveredAmount: transaction.isDeliveredAmountManual ? transaction.deliveredAmount.toString() : "",
+          receivedStatus: transaction.receivedStatus === "NOT_RECEIVED" ? "NOT_RECEIVED" : "RECEIVED",
+          deliveredStatus: transaction.deliveredStatus === "DELIVERED" ? "DELIVERED" : "NOT_DELIVERED",
+          notes: transaction.notes || "",
+          commissionEnabled: Boolean(transaction.commission),
+          commissionPersonName: transaction.commission?.personName || "",
+          commissionType: transaction.commission?.type || "FIXED",
+          commissionBase: transaction.commission?.base || "RECEIVED_AMOUNT",
+          commissionValue: transaction.commission?.value.toString() || "",
+          commissionCurrency: transaction.commission?.currencyCode || transaction.profitCurrency,
+          commissionNotes: transaction.commission?.notes || "",
+        }}
+      />
     </div>
   );
 }

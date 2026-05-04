@@ -8,6 +8,7 @@ import {
   transferStatusLabels,
   transferTypeLabels,
 } from "@/lib/options";
+import { getOpenAmountInfo } from "@/lib/transfer-calculations";
 import type { getCustomerTransferSummary } from "@/lib/transfer-service";
 
 type CustomerTransferSummary = Awaited<ReturnType<typeof getCustomerTransferSummary>>;
@@ -62,11 +63,12 @@ const styles = StyleSheet.create({
   },
   tableHeader: { backgroundColor: "#e7f0ea", fontWeight: 700 },
   cell: { padding: 5, borderLeftWidth: 1, borderLeftColor: "#d8dfdc", textAlign: "right" },
-  dateCell: { width: "11%" },
-  customerCell: { width: "17%" },
-  typeCell: { width: "15%" },
-  moneyCell: { width: "16%" },
-  statusCell: { width: "17%" },
+  dateCell: { width: "10%" },
+  idCell: { width: "13%" },
+  typeCell: { width: "14%" },
+  notesCell: { width: "18%" },
+  moneyCell: { width: "13%" },
+  balanceCell: { width: "19%" },
   lastCell: { borderLeftWidth: 0 },
   footer: { marginTop: 14, borderTopWidth: 1, borderTopColor: "#d8dfdc", paddingTop: 10, color: "#65736e" },
 });
@@ -94,11 +96,13 @@ export function CustomerStatementDocument({ summary }: { summary: CustomerTransf
   const fontFamily = registerStatementFont();
 
   return (
-    <Document title={`تقرير عميل - ${summary.customer.name}`} author="نظام التحويل">
+    <Document title={`كشف حساب - ${summary.customer.name}`} author="نظام التحويل">
       <Page size="A4" style={[styles.page, { fontFamily }]}>
         <View style={styles.header}>
-          <Text style={styles.title}>تقرير عميل</Text>
-          <Text style={styles.subtitle}>{summary.customer.name}</Text>
+          <Text style={styles.title}>كشف حساب العميل</Text>
+          <Text style={styles.subtitle}>
+            {summary.customer.name} - عدد العمليات: {summary.transactions.length} - تاريخ التقرير: {formatDate(new Date())}
+          </Text>
         </View>
 
         <View style={styles.grid}>
@@ -108,45 +112,58 @@ export function CustomerStatementDocument({ summary }: { summary: CustomerTransf
         </View>
 
         <View style={styles.grid}>
-          <TotalsBox label="باقي علينا" totals={summary.open.oweCustomer} />
-          <TotalsBox label="باقي لنا" totals={summary.open.customerOwesUs} />
+          <TotalsBox label="إجمالي علينا" totals={summary.open.oweCustomer} />
+          <TotalsBox label="إجمالي لنا" totals={summary.open.customerOwesUs} />
         </View>
 
         <Text style={styles.sectionTitle}>العمليات</Text>
         <View style={styles.table}>
           <View style={[styles.tableRow, styles.tableHeader]}>
             <Text style={[styles.cell, styles.dateCell]}>التاريخ</Text>
-            <Text style={[styles.cell, styles.customerCell]}>العميل</Text>
+            <Text style={[styles.cell, styles.idCell]}>رقم العملية</Text>
             <Text style={[styles.cell, styles.typeCell]}>النوع</Text>
-            <Text style={[styles.cell, styles.moneyCell]}>استلمنا</Text>
-            <Text style={[styles.cell, styles.moneyCell]}>سلمنا / مطلوب</Text>
-            <Text style={[styles.cell, styles.moneyCell]}>الربح</Text>
-            <Text style={[styles.cell, styles.statusCell, styles.lastCell]}>الحالة</Text>
+            <Text style={[styles.cell, styles.notesCell]}>ملاحظات</Text>
+            <Text style={[styles.cell, styles.moneyCell]}>لنا</Text>
+            <Text style={[styles.cell, styles.moneyCell]}>علينا</Text>
+            <Text style={[styles.cell, styles.balanceCell, styles.lastCell]}>الرصيد بعد العملية</Text>
           </View>
 
-          {summary.transactions.map((transaction) => (
-            <View key={transaction.id} style={styles.tableRow} wrap={false}>
-              <Text style={[styles.cell, styles.dateCell]}>{formatDate(transaction.date)}</Text>
-              <Text style={[styles.cell, styles.customerCell]}>{transaction.customerNameSnapshot}</Text>
-              <Text style={[styles.cell, styles.typeCell]}>{transferTypeLabels[transaction.type]}</Text>
-              <Text style={[styles.cell, styles.moneyCell]}>
-                {formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}
-              </Text>
-              <Text style={[styles.cell, styles.moneyCell]}>
-                {formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}
-              </Text>
-              <Text style={[styles.cell, styles.moneyCell]}>
-                {formatMoney(transaction.profitAmount, transaction.profitCurrency)}
-              </Text>
-              <Text style={[styles.cell, styles.statusCell, styles.lastCell]}>
-                {receivedStatusLabels[transaction.receivedStatus]} / {deliveredStatusLabels[transaction.deliveredStatus]} / {transferStatusLabels[transaction.status]}
-              </Text>
-            </View>
-          ))}
+          {summary.transactions.map((transaction) => {
+            const openInfo = getOpenAmountInfo({
+              receivedStatus: transaction.receivedStatus,
+              deliveredStatus: transaction.deliveredStatus,
+              status: transaction.status,
+              receivedCurrency: transaction.receivedCurrency,
+              receivedAmount: transaction.receivedAmount,
+              deliveredCurrency: transaction.deliveredCurrency,
+              deliveredAmount: transaction.deliveredAmount,
+            });
+            const usAmount = openInfo?.side === "CUSTOMER_OWES_US"
+              ? formatMoney(openInfo.amount, openInfo.currency)
+              : "-";
+            const oweAmount = openInfo?.side === "OWE_CUSTOMER"
+              ? formatMoney(openInfo.amount, openInfo.currency)
+              : "-";
+            const balanceText = openInfo && openInfo.side !== "PENDING"
+              ? `${openInfo.label}: ${formatMoney(openInfo.amount, openInfo.currency)}`
+              : `${receivedStatusLabels[transaction.receivedStatus]} / ${deliveredStatusLabels[transaction.deliveredStatus]} / ${transferStatusLabels[transaction.status]}`;
+
+            return (
+              <View key={transaction.id} style={styles.tableRow} wrap={false}>
+                <Text style={[styles.cell, styles.dateCell]}>{formatDate(transaction.date)}</Text>
+                <Text style={[styles.cell, styles.idCell]}>{transaction.id.slice(-8)}</Text>
+                <Text style={[styles.cell, styles.typeCell]}>{transferTypeLabels[transaction.type]}</Text>
+                <Text style={[styles.cell, styles.notesCell]}>{transaction.notes || "-"}</Text>
+                <Text style={[styles.cell, styles.moneyCell]}>{usAmount}</Text>
+                <Text style={[styles.cell, styles.moneyCell]}>{oweAmount}</Text>
+                <Text style={[styles.cell, styles.balanceCell, styles.lastCell]}>{balanceText}</Text>
+              </View>
+            );
+          })}
         </View>
 
         <Text style={styles.footer}>
-          هذا التقرير مبني على العمليات المسجلة وأسعار كل عملية وقت حفظها. لا يتم استخدام سعر صرف عام أو متغير.
+          كشف الحساب مبني على العمليات المسجلة وأسعار كل عملية وقت حفظها. لا يتم استخدام سعر صرف عام أو متغير.
         </Text>
       </Page>
     </Document>

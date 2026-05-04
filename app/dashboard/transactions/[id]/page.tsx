@@ -4,14 +4,18 @@ import { notFound } from "next/navigation";
 import { CancelTransactionButton, CompleteStepButton } from "@/components/forms/transaction-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatDecimal, formatMoney } from "@/lib/format";
 import {
+  currencyLabels,
+  commissionBaseLabels,
+  commissionTypeLabels,
   deliveredStatusLabels,
   receivedStatusLabels,
   transferStatusLabels,
   transferTypeLabels,
 } from "@/lib/options";
 import { prisma } from "@/lib/prisma";
+import { getRateDirection } from "@/lib/transfer-calculations";
 
 type TransactionDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -21,12 +25,15 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
   const { id } = await params;
   const transaction = await prisma.transferTransaction.findUnique({
     where: { id },
-    include: { customer: true },
+    include: { customer: true, commission: true },
   });
 
   if (!transaction) {
     notFound();
   }
+  const fallbackDirection = getRateDirection(transaction.receivedCurrency, transaction.deliveredCurrency);
+  const rateBaseCurrency = transaction.rateBaseCurrency || fallbackDirection.rateBaseCurrency;
+  const rateQuoteCurrency = transaction.rateQuoteCurrency || fallbackDirection.rateQuoteCurrency;
 
   return (
     <div className="grid gap-6">
@@ -35,8 +42,8 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
           <h2 className="text-2xl font-bold text-ink">تفاصيل العملية</h2>
           <p className="mt-1 text-sm text-muted">{transaction.customerNameSnapshot}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`/dashboard/transactions/${transaction.id}/edit`} className="inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 font-semibold text-ink hover:bg-mint">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+          <Link href={`/dashboard/transactions/${transaction.id}/edit`} className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 py-2 font-semibold text-ink hover:bg-mint sm:flex-none">
             <Pencil className="h-4 w-4" />
             تعديل
           </Link>
@@ -68,10 +75,10 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="الأسعار والحساب">
           <dl className="grid gap-3 text-sm">
-            <div className="flex justify-between gap-4"><dt className="text-muted">سعر الدولار مقابل الجنيه</dt><dd className="font-semibold">{transaction.usdToEgp.toString()}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">سعر الدولار مقابل الليرة</dt><dd className="font-semibold">{transaction.usdToTry.toString()}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">السعر الحسابي/التكلفة</dt><dd className="font-semibold">{transaction.theoreticalRate.toString()}</dd></div>
-            <div className="flex justify-between gap-4"><dt className="text-muted">السعر الفعلي للعميل</dt><dd className="font-semibold">{transaction.customerRate.toString()}</dd></div>
+            <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">اتجاه السعر</dt><dd className="font-semibold">كل 1 {currencyLabels[rateBaseCurrency]} = X {currencyLabels[rateQuoteCurrency]}</dd></div>
+            <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">سعر التكلفة</dt><dd className="font-semibold">{formatDecimal(transaction.costRate)} {currencyLabels[rateQuoteCurrency]}</dd></div>
+            <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">سعر العميل</dt><dd className="font-semibold">{formatDecimal(transaction.customerRate)} {currencyLabels[rateQuoteCurrency]}</dd></div>
+            <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">فرق السعر</dt><dd className="font-semibold">{formatDecimal(transaction.rateDifference)} {currencyLabels[rateQuoteCurrency]}</dd></div>
           </dl>
         </Card>
 
@@ -99,12 +106,28 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
         </Card>
       </div>
 
+      <Card title="العمولة">
+        {transaction.commission ? (
+          <dl className="grid gap-3 text-sm md:grid-cols-2">
+            <div className="min-w-0"><dt className="text-muted">اسم صاحب العمولة</dt><dd className="break-words font-semibold">{transaction.commission.personName || "-"}</dd></div>
+            <div className="min-w-0"><dt className="text-muted">نوع العمولة</dt><dd className="break-words font-semibold">{commissionTypeLabels[transaction.commission.type]}</dd></div>
+            <div className="min-w-0"><dt className="text-muted">تُحسب من</dt><dd className="break-words font-semibold">{commissionBaseLabels[transaction.commission.base]}</dd></div>
+            <div className="min-w-0"><dt className="text-muted">قيمة العمولة</dt><dd className="break-words font-semibold">{formatDecimal(transaction.commission.value)}</dd></div>
+            <div className="min-w-0"><dt className="text-muted">المبلغ المحسوب</dt><dd className="break-words font-semibold">{formatMoney(transaction.commission.amount, transaction.commission.currencyCode)}</dd></div>
+            <div className="min-w-0"><dt className="text-muted">ملاحظات العمولة</dt><dd className="break-words font-semibold">{transaction.commission.notes || "-"}</dd></div>
+          </dl>
+        ) : (
+          <p className="text-sm text-muted">لا توجد عمولة مسجلة لهذه العملية.</p>
+        )}
+      </Card>
+
       <Card title="بيانات إضافية">
         <dl className="grid gap-3 text-sm md:grid-cols-2">
-          <div><dt className="text-muted">التاريخ</dt><dd className="font-semibold">{formatDate(transaction.date)}</dd></div>
-          <div><dt className="text-muted">العميل/التاجر</dt><dd className="font-semibold">{transaction.customerNameSnapshot}</dd></div>
-          <div><dt className="text-muted">الهاتف</dt><dd className="font-semibold">{transaction.customerPhoneSnapshot || "-"}</dd></div>
-          <div><dt className="text-muted">ملاحظات</dt><dd className="font-semibold">{transaction.notes || "-"}</dd></div>
+          <div className="min-w-0"><dt className="text-muted">التاريخ</dt><dd className="break-words font-semibold">{formatDate(transaction.date)}</dd></div>
+          <div className="min-w-0"><dt className="text-muted">العميل/التاجر</dt><dd className="break-words font-semibold">{transaction.customerNameSnapshot}</dd></div>
+          <div className="min-w-0"><dt className="text-muted">الهاتف</dt><dd className="break-words font-semibold">{transaction.customerPhoneSnapshot || "-"}</dd></div>
+          <div className="min-w-0"><dt className="text-muted">ملاحظات</dt><dd className="break-words font-semibold">{transaction.notes || "-"}</dd></div>
+          <div className="min-w-0"><dt className="text-muted">سبب الإلغاء</dt><dd className="break-words font-semibold">{transaction.cancellationReason || "-"}</dd></div>
         </dl>
       </Card>
     </div>

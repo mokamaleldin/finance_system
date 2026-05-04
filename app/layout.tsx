@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { appBranding } from "@/lib/branding";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "نظام الصرافة والقيود",
-  description: "نظام دفتر أستاذ لإدارة الصرافة والعملاء بين مصر وتركيا",
+  title: appBranding.name,
+  description: appBranding.tagline,
 };
 
 export default function RootLayout({

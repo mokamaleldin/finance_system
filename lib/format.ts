@@ -2,15 +2,23 @@ import { Currency } from "@prisma/client";
 import Decimal from "decimal.js";
 import { currencyLabels, getBalanceStatus, toDecimal, type DecimalInput } from "@/lib/calculations";
 
-const numberFormatter = new Intl.NumberFormat("ar-EG", {
+const numberFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 4,
+  numberingSystem: "latn",
 });
 
-const dateFormatter = new Intl.DateTimeFormat("ar-EG", {
+const moneyFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+  numberingSystem: "latn",
+});
+
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
+  numberingSystem: "latn",
 });
 
 export function formatDecimal(value: DecimalInput) {
@@ -18,7 +26,7 @@ export function formatDecimal(value: DecimalInput) {
 }
 
 export function formatMoney(value: DecimalInput, currency: Currency) {
-  return `${formatDecimal(value)} ${currency}`;
+  return `${moneyFormatter.format(toDecimal(value).toNumber())} ${currency}`;
 }
 
 export function formatCurrencyName(currency: Currency) {
@@ -35,7 +43,12 @@ export function formatDate(value: Date | string) {
 }
 
 export function formatDateInput(value: Date | string) {
-  return new Date(value).toISOString().slice(0, 10);
+  const date = new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 export function formatOptionalMoney(value: DecimalInput, currency?: Currency | null) {

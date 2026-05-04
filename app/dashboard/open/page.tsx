@@ -6,11 +6,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { currencies } from "@/lib/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import {
+  currencyLabels,
   deliveredStatusLabels,
   receivedStatusLabels,
   transferTypeLabels,
 } from "@/lib/options";
-import { getRemainingSide } from "@/lib/transfer-calculations";
+import { getOpenAmountInfo } from "@/lib/transfer-calculations";
 import { getOpenTransfers } from "@/lib/transfer-service";
 
 export default async function OpenTransactionsPage() {
@@ -24,21 +25,21 @@ export default async function OpenTransactionsPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="باقي علينا تسليمه">
+        <Card title="علينا للعملاء">
           <div className="grid gap-2">
             {currencies.map((currency) => (
-              <div key={currency} className="flex justify-between rounded-lg bg-mint px-3 py-2">
-                <span>{currency}</span>
+              <div key={currency} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-mint px-3 py-2">
+                <span>{currencyLabels[currency]}</span>
                 <strong>{formatMoney(report.oweCustomer[currency], currency)}</strong>
               </div>
             ))}
           </div>
         </Card>
-        <Card title="باقي لنا استلامه">
+        <Card title="لنا عند العملاء">
           <div className="grid gap-2">
             {currencies.map((currency) => (
-              <div key={currency} className="flex justify-between rounded-lg bg-paper px-3 py-2">
-                <span>{currency}</span>
+              <div key={currency} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-paper px-3 py-2">
+                <span>{currencyLabels[currency]}</span>
                 <strong>{formatMoney(report.customerOwesUs[currency], currency)}</strong>
               </div>
             ))}
@@ -50,55 +51,113 @@ export default async function OpenTransactionsPage() {
         {report.transactions.length === 0 ? (
           <EmptyState title="لا توجد عمليات مفتوحة" description="كل العمليات الحالية مكتملة." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-sm">
-              <thead>
-                <tr className="border-b border-line text-right text-muted">
-                  <th className="py-3 font-semibold">التاريخ</th>
-                  <th className="py-3 font-semibold">العميل</th>
-                  <th className="py-3 font-semibold">نوع العملية</th>
-                  <th className="py-3 font-semibold">المعلق</th>
-                  <th className="py-3 font-semibold">الاستلام</th>
-                  <th className="py-3 font-semibold">التسليم</th>
-                  <th className="py-3 font-semibold">إجراء</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.transactions.map((transaction) => {
-                  const side = getRemainingSide({
-                    receivedStatus: transaction.receivedStatus,
-                    deliveredStatus: transaction.deliveredStatus,
-                    status: transaction.status,
-                  });
+          <div>
+            <div className="grid gap-3 md:hidden">
+              {report.transactions.map((transaction) => {
+                const openInfo = getOpenAmountInfo({
+                  receivedStatus: transaction.receivedStatus,
+                  deliveredStatus: transaction.deliveredStatus,
+                  status: transaction.status,
+                  receivedCurrency: transaction.receivedCurrency,
+                  receivedAmount: transaction.receivedAmount,
+                  deliveredCurrency: transaction.deliveredCurrency,
+                  deliveredAmount: transaction.deliveredAmount,
+                });
 
-                  return (
-                    <tr key={transaction.id} className="border-b border-line/70">
-                      <td className="py-3">{formatDate(transaction.date)}</td>
-                      <td className="py-3 font-semibold">{transaction.customerNameSnapshot}</td>
-                      <td className="py-3">{transferTypeLabels[transaction.type]}</td>
-                      <td className="py-3 font-semibold">
-                        {side === "OWE_CUSTOMER"
-                          ? `باقي علينا ${formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}`
-                          : side === "CUSTOMER_OWES_US"
-                            ? `باقي لنا ${formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}`
-                            : "بانتظار استلام وتسليم"}
-                      </td>
-                      <td className="py-3"><Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge></td>
-                      <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
-                      <td className="py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
-                            فتح العملية
-                          </Link>
-                          {transaction.receivedStatus !== "RECEIVED" ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
-                          {transaction.deliveredStatus !== "DELIVERED" ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                return (
+                  <div key={transaction.id} className="rounded-lg border border-line bg-paper p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-ink">{transaction.customerNameSnapshot}</p>
+                        <p className="mt-1 text-xs text-muted">
+                          {formatDate(transaction.date)} - {transferTypeLabels[transaction.type]}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 rounded-lg bg-white px-3 py-2 font-bold text-ink">
+                      {openInfo
+                        ? openInfo.side === "PENDING"
+                          ? openInfo.label
+                          : (
+                              <span>
+                                {openInfo.label}: {formatMoney(openInfo.amount, openInfo.currency)}
+                              </span>
+                            )
+                        : "-"}
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      <Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge>
+                      <Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-semibold text-ink hover:bg-mint">
+                        فتح العملية
+                      </Link>
+                      {transaction.receivedStatus !== "RECEIVED" ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
+                      {transaction.deliveredStatus !== "DELIVERED" ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[1000px] text-sm">
+                <thead>
+                  <tr className="border-b border-line text-right text-muted">
+                    <th className="py-3 font-semibold">التاريخ</th>
+                    <th className="py-3 font-semibold">العميل</th>
+                    <th className="py-3 font-semibold">نوع العملية</th>
+                    <th className="py-3 font-semibold">المعلق</th>
+                    <th className="py-3 font-semibold">الاستلام</th>
+                    <th className="py-3 font-semibold">التسليم</th>
+                    <th className="py-3 font-semibold">إجراء</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.transactions.map((transaction) => {
+                    const openInfo = getOpenAmountInfo({
+                      receivedStatus: transaction.receivedStatus,
+                      deliveredStatus: transaction.deliveredStatus,
+                      status: transaction.status,
+                      receivedCurrency: transaction.receivedCurrency,
+                      receivedAmount: transaction.receivedAmount,
+                      deliveredCurrency: transaction.deliveredCurrency,
+                      deliveredAmount: transaction.deliveredAmount,
+                    });
+
+                    return (
+                      <tr key={transaction.id} className="border-b border-line/70">
+                        <td className="py-3">{formatDate(transaction.date)}</td>
+                        <td className="py-3 font-semibold">{transaction.customerNameSnapshot}</td>
+                        <td className="py-3">{transferTypeLabels[transaction.type]}</td>
+                        <td className="py-3 font-semibold">
+                          {openInfo
+                            ? openInfo.side === "PENDING"
+                              ? openInfo.label
+                              : `${openInfo.label}: ${formatMoney(openInfo.amount, openInfo.currency)}`
+                            : "-"}
+                        </td>
+                        <td className="py-3"><Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge></td>
+                        <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
+                        <td className="py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
+                              فتح العملية
+                            </Link>
+                            {transaction.receivedStatus !== "RECEIVED" ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
+                            {transaction.deliveredStatus !== "DELIVERED" ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </Card>

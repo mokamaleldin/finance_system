@@ -1,5 +1,10 @@
 import { Prisma } from "@prisma/client";
 import Decimal from "decimal.js";
+import {
+  calculateCommissionAmount,
+  getCommissionCurrency,
+  type CommissionInput,
+} from "@/lib/commission";
 import { calculateTransfer, deriveTransferStatus, getRemainingSide } from "@/lib/transfer-calculations";
 import { emptyCurrencyTotals, toDecimal, toMoneyString } from "@/lib/calculations";
 import { getDateRange } from "@/lib/format";
@@ -19,6 +24,7 @@ type TransferInput = z.output<typeof transferTransactionSchema>;
 
 const transactionInclude = {
   customer: true,
+  commission: true,
 } satisfies Prisma.TransferTransactionInclude;
 
 export type TransferWithCustomer = Prisma.TransferTransactionGetPayload<{
@@ -35,13 +41,40 @@ type TransferSummaryTransaction = {
   deliveredAmount: Decimal.Value;
 };
 
-function normalizeMoney(value: Decimal.Value, scale = 4) {
+type PrismaWriteClient = typeof prisma | Prisma.TransactionClient;
+
+function normalizeMoney(value: Decimal.Value | null | undefined | { toString(): string }, scale = 4) {
   return toDecimal(value).toDecimalPlaces(scale).toFixed(scale);
 }
 
-async function resolveCustomer(input: TransferInput) {
+function normalizeOptionalMoney(value: Decimal.Value | null | undefined | { toString(): string }, scale = 4) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  return normalizeMoney(value, scale);
+}
+
+function normalizeUsdRates(input: TransferInput) {
+  const rates: Partial<Record<CurrencyCode, string>> = { USD: "1.00000000" };
+
+  for (const currency of currencyValues) {
+    const raw =
+      input.usdRates?.[currency] ||
+      (currency === "EGP" ? input.usdToEgp : "") ||
+      (currency === "TRY" ? input.usdToTry : "");
+
+    if (raw !== undefined && raw !== null && raw !== "") {
+      rates[currency] = normalizeMoney(raw, 8);
+    }
+  }
+
+  return rates;
+}
+
+async function resolveCustomer(input: TransferInput, db: PrismaWriteClient = prisma) {
   if (input.customerId) {
-    const customer = await prisma.customer.findUniqueOrThrow({
+    const customer = await db.customer.findUniqueOrThrow({
       where: { id: input.customerId },
     });
 
@@ -55,7 +88,7 @@ async function resolveCustomer(input: TransferInput) {
   const name = input.quickCustomerName || input.customerName;
 
   if (input.createCustomer) {
-    const customer = await prisma.customer.create({
+    const customer = await db.customer.create({
       data: {
         name,
         phone: nullableString(input.phone),
@@ -77,42 +110,102 @@ async function resolveCustomer(input: TransferInput) {
   };
 }
 
+async function syncTransactionCommission(
+  db: PrismaWriteClient,
+  transactionId: string,
+  input: CommissionInput,
+  context: {
+    receivedAmount: Decimal.Value;
+    receivedCurrency: CurrencyCode;
+    profitAmount: Decimal.Value;
+    profitCurrency: CurrencyCode;
+  },
+) {
+  if (!input.commissionEnabled) {
+    await db.commission.deleteMany({ where: { transactionId } });
+    return;
+  }
+
+  const amount = calculateCommissionAmount(input, context);
+  const currencyCode = getCommissionCurrency(input, context);
+  const value = normalizeMoney(input.commissionValue ?? 0, 8);
+  const data = {
+    personName: nullableString(input.commissionPersonName),
+    type: input.commissionType ?? "FIXED",
+    base: input.commissionBase ?? "RECEIVED_AMOUNT",
+    value,
+    amount: normalizeMoney(amount),
+    currencyCode,
+    notes: nullableString(input.commissionNotes),
+  };
+
+  await db.commission.upsert({
+    where: { transactionId },
+    create: {
+      transactionId,
+      ...data,
+    },
+    update: data,
+  });
+}
+
 export async function createTransferTransaction(input: TransferInput) {
-  const customer = await resolveCustomer(input);
+  const usdRates = normalizeUsdRates(input);
   const calculation = calculateTransfer({
     type: input.type,
     receivedCurrency: input.receivedCurrency,
     receivedAmount: input.receivedAmount,
     deliveredCurrency: input.deliveredCurrency,
-    usdToEgp: input.usdToEgp,
-    usdToTry: input.usdToTry,
+    usdRates,
+    costRate: input.costRate,
     customerRate: input.customerRate,
     deliveredAmountOverride: input.deliveredAmount || undefined,
   });
   const status = deriveTransferStatus(input.receivedStatus, input.deliveredStatus);
 
-  return prisma.transferTransaction.create({
-    data: {
-      date: input.date,
-      ...customer,
-      type: input.type,
+  return prisma.$transaction(async (db) => {
+    const customer = await resolveCustomer(input, db);
+    const transaction = await db.transferTransaction.create({
+      data: {
+        date: input.date,
+        ...customer,
+        type: input.type,
+        receiveLocation: nullableString(input.receiveLocation),
+        deliverLocation: nullableString(input.deliverLocation),
+        receivedCurrency: input.receivedCurrency,
+        receivedAmount: normalizeMoney(input.receivedAmount),
+        deliveredCurrency: input.deliveredCurrency,
+        deliveredAmount: normalizeMoney(calculation.deliveredAmount),
+        usdRates,
+        usdToEgp: normalizeOptionalMoney(usdRates.EGP, 8),
+        usdToTry: normalizeOptionalMoney(usdRates.TRY, 8),
+        rateBaseCurrency: calculation.rateBaseCurrency,
+        rateQuoteCurrency: calculation.rateQuoteCurrency,
+        costRate: normalizeMoney(calculation.costRate, 8),
+        theoreticalRate: normalizeMoney(calculation.costRate, 8),
+        customerRate: normalizeMoney(input.customerRate, 8),
+        rateDifference: normalizeMoney(calculation.rateDifference, 8),
+        profitCurrency: calculation.profitCurrency,
+        profitAmount: normalizeMoney(calculation.profitAmount),
+        receivedStatus: input.receivedStatus,
+        deliveredStatus: input.deliveredStatus,
+        status,
+        isDeliveredAmountManual: Boolean(input.deliveredAmount),
+        notes: nullableString(input.notes),
+      },
+    });
+
+    await syncTransactionCommission(db, transaction.id, input, {
+      receivedAmount: input.receivedAmount,
       receivedCurrency: input.receivedCurrency,
-      receivedAmount: normalizeMoney(input.receivedAmount),
-      deliveredCurrency: input.deliveredCurrency,
-      deliveredAmount: normalizeMoney(calculation.deliveredAmount),
-      usdToEgp: normalizeMoney(input.usdToEgp, 8),
-      usdToTry: normalizeMoney(input.usdToTry, 8),
-      theoreticalRate: normalizeMoney(calculation.theoreticalRate, 8),
-      customerRate: normalizeMoney(input.customerRate, 8),
+      profitAmount: calculation.profitAmount,
       profitCurrency: calculation.profitCurrency,
-      profitAmount: normalizeMoney(calculation.profitAmount),
-      receivedStatus: input.receivedStatus,
-      deliveredStatus: input.deliveredStatus,
-      status,
-      isDeliveredAmountManual: Boolean(input.deliveredAmount),
-      notes: nullableString(input.notes),
-    },
-    include: transactionInclude,
+    });
+
+    return db.transferTransaction.findUniqueOrThrow({
+      where: { id: transaction.id },
+      include: transactionInclude,
+    });
   });
 }
 
@@ -120,14 +213,14 @@ export async function updateTransferTransaction(id: string, input: TransferInput
   const existing = await prisma.transferTransaction.findUniqueOrThrow({
     where: { id },
   });
-  const customer = await resolveCustomer(input);
+  const usdRates = normalizeUsdRates(input);
   const calculation = calculateTransfer({
     type: input.type,
     receivedCurrency: input.receivedCurrency,
     receivedAmount: input.receivedAmount,
     deliveredCurrency: input.deliveredCurrency,
-    usdToEgp: input.usdToEgp,
-    usdToTry: input.usdToTry,
+    usdRates,
+    costRate: input.costRate,
     customerRate: input.customerRate,
     deliveredAmountOverride: input.deliveredAmount || undefined,
   });
@@ -137,38 +230,60 @@ export async function updateTransferTransaction(id: string, input: TransferInput
     existing.status === "CANCELLED",
   );
 
-  return prisma.transferTransaction.update({
-    where: { id },
-    data: {
-      date: input.date,
-      ...customer,
-      type: input.type,
+  return prisma.$transaction(async (db) => {
+    const customer = await resolveCustomer(input, db);
+    await db.transferTransaction.update({
+      where: { id },
+      data: {
+        date: input.date,
+        ...customer,
+        type: input.type,
+        receiveLocation: nullableString(input.receiveLocation),
+        deliverLocation: nullableString(input.deliverLocation),
+        receivedCurrency: input.receivedCurrency,
+        receivedAmount: normalizeMoney(input.receivedAmount),
+        deliveredCurrency: input.deliveredCurrency,
+        deliveredAmount: normalizeMoney(calculation.deliveredAmount),
+        usdRates,
+        usdToEgp: normalizeOptionalMoney(usdRates.EGP, 8),
+        usdToTry: normalizeOptionalMoney(usdRates.TRY, 8),
+        rateBaseCurrency: calculation.rateBaseCurrency,
+        rateQuoteCurrency: calculation.rateQuoteCurrency,
+        costRate: normalizeMoney(calculation.costRate, 8),
+        theoreticalRate: normalizeMoney(calculation.costRate, 8),
+        customerRate: normalizeMoney(input.customerRate, 8),
+        rateDifference: normalizeMoney(calculation.rateDifference, 8),
+        profitCurrency: calculation.profitCurrency,
+        profitAmount: normalizeMoney(calculation.profitAmount),
+        receivedStatus: input.receivedStatus,
+        deliveredStatus: input.deliveredStatus,
+        status,
+        isDeliveredAmountManual: Boolean(input.deliveredAmount),
+        notes: nullableString(input.notes),
+      },
+    });
+
+    await syncTransactionCommission(db, id, input, {
+      receivedAmount: input.receivedAmount,
       receivedCurrency: input.receivedCurrency,
-      receivedAmount: normalizeMoney(input.receivedAmount),
-      deliveredCurrency: input.deliveredCurrency,
-      deliveredAmount: normalizeMoney(calculation.deliveredAmount),
-      usdToEgp: normalizeMoney(input.usdToEgp, 8),
-      usdToTry: normalizeMoney(input.usdToTry, 8),
-      theoreticalRate: normalizeMoney(calculation.theoreticalRate, 8),
-      customerRate: normalizeMoney(input.customerRate, 8),
+      profitAmount: calculation.profitAmount,
       profitCurrency: calculation.profitCurrency,
-      profitAmount: normalizeMoney(calculation.profitAmount),
-      receivedStatus: input.receivedStatus,
-      deliveredStatus: input.deliveredStatus,
-      status,
-      isDeliveredAmountManual: Boolean(input.deliveredAmount),
-      notes: nullableString(input.notes),
-    },
-    include: transactionInclude,
+    });
+
+    return db.transferTransaction.findUniqueOrThrow({
+      where: { id },
+      include: transactionInclude,
+    });
   });
 }
 
-export async function cancelTransferTransaction(id: string) {
+export async function cancelTransferTransaction(id: string, cancellationReason?: string | null) {
   return prisma.transferTransaction.update({
     where: { id },
     data: {
       status: "CANCELLED",
       cancelledAt: new Date(),
+      cancellationReason: nullableString(cancellationReason),
     },
   });
 }
@@ -188,7 +303,7 @@ export async function setTransferStepStatus(
     where: { id },
     data: {
       ...data,
-      status: deriveTransferStatus(receivedStatus, deliveredStatus),
+      status: deriveTransferStatus(receivedStatus, deliveredStatus, current.status === "CANCELLED"),
     },
   });
 }
@@ -199,6 +314,8 @@ export function transferWhereFromFilters(filters: {
   customerId?: string;
   type?: TransferTypeCode;
   currency?: CurrencyCode;
+  receivedCurrency?: CurrencyCode;
+  deliveredCurrency?: CurrencyCode;
   status?: TransferStatusCode;
   receivedStatus?: ReceivedStatusCode;
   deliveredStatus?: DeliveredStatusCode;
@@ -214,6 +331,8 @@ export function transferWhereFromFilters(filters: {
       : {}),
     ...(filters.customerId ? { customerId: filters.customerId } : {}),
     ...(filters.type ? { type: filters.type } : {}),
+    ...(filters.receivedCurrency ? { receivedCurrency: filters.receivedCurrency } : {}),
+    ...(filters.deliveredCurrency ? { deliveredCurrency: filters.deliveredCurrency } : {}),
     ...(filters.status ? { status: filters.status } : { status: { not: "CANCELLED" as const } }),
     ...(filters.receivedStatus ? { receivedStatus: filters.receivedStatus } : {}),
     ...(filters.deliveredStatus ? { deliveredStatus: filters.deliveredStatus } : {}),
