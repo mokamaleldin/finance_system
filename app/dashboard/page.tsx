@@ -19,14 +19,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
         <div>
-          <h2 className="text-2xl font-bold text-ink">لوحة التحكم</h2>
+          <h2 className="text-3xl font-bold text-ink">لوحة التحكم</h2>
           <p className="mt-1 text-sm text-muted">أرقام اليوم فقط حسب تاريخ العملية.</p>
         </div>
         <Link
           href="/dashboard/transactions/new"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white hover:bg-olive sm:w-auto"
+          className="action-primary w-full sm:w-auto"
         >
           <PlusCircle className="h-4 w-4" />
           معاملة جديدة
@@ -82,7 +82,7 @@ export default async function DashboardPage() {
           <div>
             <div className="grid gap-3 md:hidden">
               {dashboard.latestTransactions.map((transaction) => (
-                <div key={transaction.id} className="rounded-lg border border-line bg-paper p-3">
+                <div key={transaction.id} className="record-card">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold text-ink">{transaction.customerNameSnapshot}</p>
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
                     </div>
                     <Link
                       href={`/dashboard/transactions/${transaction.id}`}
-                      className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 text-sm font-semibold text-ink hover:bg-mint"
+                      className="action-secondary px-3 py-1.5 text-sm"
                     >
                       عرض
                       <ArrowLeft className="h-3.5 w-3.5" />
@@ -160,7 +160,7 @@ export default async function DashboardPage() {
                       <td className="py-3">
                         <Link
                           href={`/dashboard/transactions/${transaction.id}`}
-                          className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 font-semibold text-ink hover:bg-mint"
+                          className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 font-semibold text-ink shadow-sm hover:bg-mint"
                         >
                           عرض
                           <ArrowLeft className="h-3.5 w-3.5" />

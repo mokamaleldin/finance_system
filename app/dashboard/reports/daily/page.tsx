@@ -74,9 +74,9 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
         <div>
-          <h2 className="text-2xl font-bold text-ink">التقارير</h2>
+          <h2 className="text-3xl font-bold text-ink">التقارير</h2>
           <p className="mt-1 text-sm text-muted">
             تقرير الفترة من {formatDate(range.start)} إلى {formatDate(range.end)} بدون خلط العملات.
           </p>
@@ -85,14 +85,14 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           <Link
             href={`/api/reports/pdf?${exportParams.toString()}`}
             target="_blank"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white hover:bg-olive"
+            className="action-primary"
           >
             <FileDown className="h-4 w-4" />
             تحميل PDF
           </Link>
           <Link
             href={`/api/reports/excel?${exportParams.toString()}`}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 py-2.5 font-semibold text-ink hover:bg-mint"
+            className="action-secondary"
           >
             <FileDown className="h-4 w-4" />
             تحميل Excel
@@ -127,7 +127,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           ) : null}
 
           <div className="flex items-end">
-            <button className="w-full rounded-lg bg-ink px-4 py-2.5 font-semibold text-white sm:w-auto">عرض التقرير</button>
+            <button className="action-primary w-full sm:w-auto">عرض التقرير</button>
           </div>
         </form>
       </Card>
@@ -157,7 +157,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           <div>
             <div className="grid gap-3 md:hidden">
               {report.transactions.map((transaction) => (
-                <div key={transaction.id} className="rounded-lg border border-line bg-paper p-3">
+                <div key={transaction.id} className="record-card">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold text-ink">{transaction.customerNameSnapshot}</p>

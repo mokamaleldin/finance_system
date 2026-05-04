@@ -66,20 +66,20 @@ export function CustomerForm({ customerId, initialValues, onSavedPath }: Custome
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="text-sm font-semibold text-ink">اسم العميل</label>
-          <input className="mt-2 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("name")} />
+          <input className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("name")} />
           {errors.name ? <p className="mt-1 text-sm text-red-700">{errors.name.message}</p> : null}
         </div>
         <div>
           <label className="text-sm font-semibold text-ink">الهاتف</label>
-          <input dir="ltr" inputMode="tel" className="mt-2 w-full rounded-lg border border-line px-3 py-2 text-left outline-none focus:border-olive" {...register("phone")} />
+          <input dir="ltr" inputMode="tel" className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 text-left outline-none focus:border-olive" {...register("phone")} />
         </div>
         <div>
           <label className="text-sm font-semibold text-ink">الدولة</label>
-          <input className="mt-2 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("country")} />
+          <input className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("country")} />
         </div>
         <div>
           <label className="text-sm font-semibold text-ink">ملاحظات</label>
-          <input className="mt-2 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("notes")} />
+          <input className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("notes")} />
         </div>
       </div>
 
@@ -88,7 +88,7 @@ export function CustomerForm({ customerId, initialValues, onSavedPath }: Custome
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white transition hover:bg-olive disabled:opacity-60 sm:w-fit"
+        className="action-primary w-full sm:w-fit"
       >
         <Save className="h-4 w-4" />
         {customerId ? "حفظ التعديل" : "إضافة العميل"}

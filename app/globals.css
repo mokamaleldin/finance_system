@@ -19,9 +19,13 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  background: var(--background);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 247, 243, 0.98) 48%, rgba(242, 239, 232, 0.96) 100%),
+    var(--background);
   color: var(--foreground);
   font-family: Arial, "Noto Sans Arabic", "Geeza Pro", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -33,6 +37,54 @@ textarea {
 
 table {
   border-collapse: collapse;
+}
+
+@layer base {
+  input,
+  select,
+  textarea {
+    @apply border-line bg-white/95 text-ink shadow-sm transition placeholder:text-muted/70;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    @apply border-olive outline-none ring-4 ring-olive/10;
+  }
+
+  table {
+    @apply text-ink;
+  }
+
+  thead tr {
+    @apply bg-stone-50/90;
+  }
+
+  th {
+    @apply whitespace-nowrap px-3 text-xs font-bold text-muted;
+  }
+
+  td {
+    @apply px-3 align-middle;
+  }
+
+  tbody tr {
+    @apply transition-colors hover:bg-mint/35;
+  }
+}
+
+@layer components {
+  .action-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-olive disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .action-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 py-2.5 font-semibold text-ink shadow-sm transition hover:border-olive/40 hover:bg-mint;
+  }
+
+  .record-card {
+    @apply rounded-lg border border-line/80 bg-white/95 p-3 shadow-sm;
+  }
 }
 
 @media print {

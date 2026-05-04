@@ -82,7 +82,7 @@ export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboar
           <input
             type="date"
             dir="ltr"
-            className="mt-2 w-full rounded-lg border border-line px-3 py-2 text-left outline-none focus:border-olive"
+            className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 text-left outline-none focus:border-olive"
             {...register("date")}
           />
           {errors.date ? <p className="mt-1 text-sm text-red-700">{errors.date.message}</p> : null}
@@ -90,7 +90,7 @@ export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboar
 
         <div>
           <label className="text-sm font-semibold text-ink">نوع المصروف</label>
-          <select className="mt-2 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("category")}>
+          <select className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("category")}>
             {expenseCategoryValues.map((category) => (
               <option key={category} value={category}>
                 {expenseCategoryLabels[category]}
@@ -102,7 +102,7 @@ export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboar
         <div>
           <label className="text-sm font-semibold text-ink">الوصف</label>
           <input
-            className="mt-2 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive"
+            className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive"
             placeholder="مثال: إنترنت المكتب"
             {...register("description")}
           />
@@ -114,7 +114,7 @@ export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboar
           <input
             inputMode="decimal"
             dir="ltr"
-            className="mt-2 w-full rounded-lg border border-line px-3 py-2 text-left font-mono tabular-nums outline-none focus:border-olive"
+            className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 text-left font-mono tabular-nums outline-none focus:border-olive"
             placeholder="1000"
             {...register("amount", {
               onChange: (event) => setValue("amount", toEnglishDigits(event.target.value)),
@@ -125,7 +125,7 @@ export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboar
 
         <div>
           <label className="text-sm font-semibold text-ink">العملة</label>
-          <select className="mt-2 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("currencyCode")}>
+          <select className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("currencyCode")}>
             {currencyValues.map((currency) => (
               <option key={currency} value={currency}>
                 {currencyLabels[currency]}
@@ -137,7 +137,7 @@ export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboar
         <div>
           <label className="text-sm font-semibold text-ink">ملاحظات</label>
           <input
-            className="mt-2 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive"
+            className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive"
             {...register("notes")}
           />
         </div>
@@ -148,7 +148,7 @@ export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboar
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white transition hover:bg-olive disabled:opacity-60 sm:w-fit"
+        className="action-primary w-full sm:w-fit"
       >
         <Save className="h-4 w-4" />
         {expenseId ? "حفظ التعديل" : "إضافة المصروف"}

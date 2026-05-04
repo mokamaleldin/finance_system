@@ -139,11 +139,11 @@ function formatMoneyLabel(value: DecimalInput, currency: CurrencyCode) {
 }
 
 function sectionClassName(extra = "") {
-  return `min-w-0 rounded-lg border border-line bg-white p-4 shadow-soft sm:p-5 ${extra}`;
+  return `min-w-0 rounded-lg border border-line/80 bg-white/95 p-4 shadow-soft backdrop-blur sm:p-5 ${extra}`;
 }
 
 function inputClassName(extra = "") {
-  return `mt-2 min-h-11 w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-muted/70 focus:border-olive focus:ring-2 focus:ring-olive/10 ${extra}`;
+  return `mt-2 min-h-12 w-full rounded-lg border border-line bg-white/95 px-3 py-2.5 text-sm text-ink outline-none transition placeholder:text-muted/70 focus:border-olive focus:ring-4 focus:ring-olive/10 ${extra}`;
 }
 
 function numericInputClassName(extra = "") {
@@ -163,7 +163,7 @@ function Section({
 }) {
   return (
     <section className={sectionClassName(className)}>
-      <div className="mb-4">
+      <div className="mb-5 border-b border-line/70 pb-3">
         <h3 className="text-base font-bold text-ink">{title}</h3>
         {hint ? <p className="mt-1 text-sm leading-6 text-muted">{hint}</p> : null}
       </div>
@@ -201,13 +201,13 @@ function SummaryRow({
 }) {
   const toneClassName =
     tone === "success"
-      ? "bg-mint text-ink"
+      ? "border-emerald-100 bg-emerald-50 text-ink"
       : tone === "warning"
-        ? "bg-red-50 text-red-700"
-        : "bg-paper text-ink";
+        ? "border-red-100 bg-red-50 text-red-700"
+        : "border-line/80 bg-white text-ink";
 
   return (
-    <div className={`rounded-lg px-3 py-2.5 ${toneClassName}`}>
+    <div className={`rounded-lg border px-3 py-2.5 shadow-sm ${toneClassName}`}>
       <p className="text-xs font-semibold text-muted">{label}</p>
       <div className="mt-1 text-sm font-bold leading-6">{value}</div>
     </div>
@@ -362,7 +362,7 @@ export function TransferTransactionForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+    <form onSubmit={onSubmit} className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
       <div className="grid min-w-0 gap-5">
         <Section title="بيانات العميل">
           <div className="grid gap-4 md:grid-cols-2">
@@ -408,7 +408,7 @@ export function TransferTransactionForm({
               />
             </Field>
 
-            <label className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold text-ink md:mt-7">
+            <label className="flex items-center gap-2 rounded-lg border border-line/80 bg-mint/70 px-3 py-3 text-sm font-semibold text-ink md:mt-7">
               <input
                 type="checkbox"
                 checked={values.createCustomer}
@@ -517,7 +517,7 @@ export function TransferTransactionForm({
 
         <Section title="الأسعار" hint="سعر العميل دائمًا يعني: كل 1 من عملة التسليم يساوي كم من عملة الاستلام.">
           <div className="grid gap-4">
-            <div className="rounded-lg border border-line bg-paper p-4">
+            <div className="rounded-lg border border-line/80 bg-paper/80 p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-bold text-ink">أسعار العملات مقابل الدولار</p>
@@ -541,7 +541,7 @@ export function TransferTransactionForm({
                   ))}
                 </div>
               ) : (
-                <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm text-muted">لا توجد أسعار مرجعية مطلوبة لهذه العملات.</p>
+                <p className="mt-3 rounded-lg border border-line/70 bg-white px-3 py-2 text-sm text-muted">لا توجد أسعار مرجعية مطلوبة لهذه العملات.</p>
               )}
             </div>
 
@@ -552,11 +552,11 @@ export function TransferTransactionForm({
                   dir="ltr"
                   value={costRatePreview ? formatNumber(costRatePreview, "rate") : ""}
                   readOnly
-                  className={numericInputClassName("bg-paper text-muted")}
+                  className={numericInputClassName("bg-paper/80 text-muted")}
                   placeholder="يحسب تلقائيًا"
                 />
                 {costRatePreview ? (
-                  <span className="mt-2 block rounded-lg bg-mint px-3 py-2 text-xs font-semibold text-ink">
+                  <span className="mt-2 block rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-semibold text-ink">
                     سعر التكلفة: كل 1 {rateBaseLabel} = {formatNumber(costRatePreview, "rate")} {rateQuoteLabel}
                   </span>
                 ) : null}
@@ -571,7 +571,7 @@ export function TransferTransactionForm({
                   className={numericInputClassName()}
                   placeholder="0"
                 />
-                <span className="mt-2 block rounded-lg bg-paper px-3 py-2 text-xs text-muted">
+                <span className="mt-2 block rounded-lg border border-line/70 bg-paper/80 px-3 py-2 text-xs text-muted">
                   كل 1 {rateBaseLabel} = {values.customerRate || "0"} {rateQuoteLabel}
                 </span>
               </Field>
@@ -613,7 +613,7 @@ export function TransferTransactionForm({
 
         <Section title="العمولة" hint="اختيارية، وتخصم من صافي الربح في التقارير بدون تغيير ربح العملية نفسه.">
           <div className="grid gap-4">
-            <label className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold text-ink">
+            <label className="flex items-center gap-2 rounded-lg border border-line/80 bg-mint/70 px-3 py-3 text-sm font-semibold text-ink">
               <input
                 type="checkbox"
                 checked={values.commissionEnabled}
@@ -689,7 +689,7 @@ export function TransferTransactionForm({
                   </Field>
                 )}
 
-                <div className="rounded-lg border border-line bg-mint px-3 py-3 text-sm md:col-span-2">
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm md:col-span-2">
                   <p className="font-semibold text-ink">قيمة العمولة المحسوبة</p>
                   <p className="mt-1 text-muted">
                     {commissionPreview
@@ -728,7 +728,7 @@ export function TransferTransactionForm({
       </div>
 
       <aside className="min-w-0 xl:sticky xl:top-24 xl:self-start">
-        <section className="rounded-lg border border-olive/25 bg-white p-5 shadow-soft">
+        <section className="rounded-lg border border-olive/25 bg-white/95 p-5 shadow-soft backdrop-blur">
           <div className="border-b border-line pb-4">
             <h3 className="text-lg font-bold text-ink">ملخص العملية</h3>
             <p className="mt-1 text-sm text-muted">راجع الأرقام قبل الحفظ.</p>

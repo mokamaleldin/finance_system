@@ -19,8 +19,8 @@ export default async function OpenTransactionsPage() {
 
   return (
     <div className="grid gap-6">
-      <div>
-        <h2 className="text-2xl font-bold text-ink">المتبقي علينا ولنا</h2>
+      <div className="rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+        <h2 className="text-3xl font-bold text-ink">المتبقي علينا ولنا</h2>
         <p className="mt-1 text-sm text-muted">عمليات مفتوحة لم يكتمل فيها الاستلام أو التسليم.</p>
       </div>
 
@@ -65,7 +65,7 @@ export default async function OpenTransactionsPage() {
                 });
 
                 return (
-                  <div key={transaction.id} className="rounded-lg border border-line bg-paper p-3">
+                  <div key={transaction.id} className="record-card">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-bold text-ink">{transaction.customerNameSnapshot}</p>
@@ -75,7 +75,7 @@ export default async function OpenTransactionsPage() {
                       </div>
                     </div>
 
-                    <div className="mt-3 rounded-lg bg-white px-3 py-2 font-bold text-ink">
+                    <div className="mt-3 rounded-lg border border-line/70 bg-mint/70 px-3 py-2 font-bold text-ink">
                       {openInfo
                         ? openInfo.side === "PENDING"
                           ? openInfo.label
@@ -93,7 +93,7 @@ export default async function OpenTransactionsPage() {
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-semibold text-ink hover:bg-mint">
+                      <Link href={`/dashboard/transactions/${transaction.id}`} className="action-secondary px-3 py-2 text-xs">
                         فتح العملية
                       </Link>
                       {transaction.receivedStatus !== "RECEIVED" ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
@@ -145,7 +145,7 @@ export default async function OpenTransactionsPage() {
                         <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
                         <td className="py-3">
                           <div className="flex flex-wrap gap-2">
-                            <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
+                            <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
                               فتح العملية
                             </Link>
                             {transaction.receivedStatus !== "RECEIVED" ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}

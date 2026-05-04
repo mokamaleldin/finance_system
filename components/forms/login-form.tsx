@@ -56,7 +56,7 @@ export function LoginForm({ nextPath = "/dashboard" }: { nextPath?: string }) {
         <input
           id="email"
           type="email"
-          className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2 outline-none focus:border-olive"
+          className="mt-2 min-h-12 w-full rounded-lg border border-line bg-white px-3 py-2 outline-none focus:border-olive"
           {...register("email")}
         />
         {errors.email ? <p className="mt-1 text-sm text-red-700">{errors.email.message}</p> : null}
@@ -69,7 +69,7 @@ export function LoginForm({ nextPath = "/dashboard" }: { nextPath?: string }) {
         <input
           id="password"
           type="password"
-          className="mt-2 w-full rounded-lg border border-line bg-white px-3 py-2 outline-none focus:border-olive"
+          className="mt-2 min-h-12 w-full rounded-lg border border-line bg-white px-3 py-2 outline-none focus:border-olive"
           {...register("password")}
         />
         {errors.password ? (
@@ -82,7 +82,7 @@ export function LoginForm({ nextPath = "/dashboard" }: { nextPath?: string }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white transition hover:bg-olive disabled:opacity-60"
+        className="action-primary"
       >
         <LogIn className="h-4 w-4" />
         تسجيل الدخول

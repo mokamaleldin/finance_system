@@ -25,15 +25,15 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
         <div>
-          <h2 className="text-2xl font-bold text-ink">{summary.customer.name}</h2>
+          <h2 className="text-3xl font-bold text-ink">{summary.customer.name}</h2>
           <p className="mt-1 text-sm text-muted">تقرير تعاملات العميل والمبالغ المفتوحة معه.</p>
         </div>
         <Link
           href={`/api/statements/customer/${summary.customer.id}`}
           target="_blank"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 font-semibold text-white hover:bg-olive sm:w-auto"
+          className="action-primary w-full sm:w-auto"
         >
           <FileText className="h-4 w-4" />
           تصدير PDF
@@ -123,7 +123,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
           <div>
             <div className="grid gap-3 md:hidden">
               {summary.transactions.map((transaction) => (
-                <div key={transaction.id} className="rounded-lg border border-line bg-paper p-3">
+                <div key={transaction.id} className="record-card">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-bold text-ink">{transferTypeLabels[transaction.type]}</p>
@@ -150,7 +150,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
                       <Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge>
                       <Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge>
                     </div>
-                    <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink hover:bg-mint">
+                    <Link href={`/dashboard/transactions/${transaction.id}`} className="action-secondary px-3 py-1.5 text-xs">
                       عرض
                     </Link>
                   </div>
@@ -185,7 +185,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
                       <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
                       <td className="py-3"><Badge tone={transaction.status === "COMPLETED" ? "success" : "warning"}>{transferStatusLabels[transaction.status]}</Badge></td>
                       <td className="py-3">
-                        <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
+                        <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
                           عرض
                         </Link>
                       </td>

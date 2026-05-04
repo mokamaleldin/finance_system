@@ -44,8 +44,8 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
 
   return (
     <div className="grid gap-6">
-      <div>
-        <h2 className="text-2xl font-bold text-ink">المصاريف</h2>
+      <div className="rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+        <h2 className="text-3xl font-bold text-ink">المصاريف</h2>
         <p className="mt-1 text-sm text-muted">سجل مصاريف التشغيل بعيدًا عن ربح العمليات، وستظهر في التقارير وصافي الربح.</p>
       </div>
 
@@ -102,7 +102,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
             </select>
           </div>
           <div className="flex items-end sm:col-span-2 lg:col-span-4">
-            <button className="w-full rounded-lg bg-ink px-4 py-2.5 font-semibold text-white sm:w-auto">تطبيق الفلاتر</button>
+            <button className="action-primary w-full sm:w-auto">تطبيق الفلاتر</button>
           </div>
         </form>
       </Card>
@@ -114,7 +114,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
           <div>
             <div className="grid gap-3 md:hidden">
               {expenses.map((expense) => (
-                <div key={expense.id} className="rounded-lg border border-line bg-paper p-3">
+                <div key={expense.id} className="record-card">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-bold text-ink">{expense.description}</p>
@@ -126,7 +126,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                   </div>
                   {expense.notes ? <p className="mt-2 text-sm leading-6 text-muted">{expense.notes}</p> : null}
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href={`/dashboard/expenses?editId=${expense.id}`} className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-line bg-white px-2 py-2 text-xs font-semibold text-ink hover:bg-mint">
+                    <Link href={`/dashboard/expenses?editId=${expense.id}`} className="action-secondary flex-1 px-2 py-2 text-xs">
                       <Pencil className="h-3.5 w-3.5" />
                       تعديل
                     </Link>
@@ -158,7 +158,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                       <td className="py-3 text-muted">{expense.notes || "-"}</td>
                       <td className="py-3">
                         <div className="flex flex-wrap gap-2">
-                          <Link href={`/dashboard/expenses?editId=${expense.id}`} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-xs font-semibold text-ink hover:bg-mint">
+                          <Link href={`/dashboard/expenses?editId=${expense.id}`} className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
                             <Pencil className="h-3.5 w-3.5" />
                             تعديل
                           </Link>

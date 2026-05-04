@@ -14,12 +14,12 @@ export function MobileNavigation({ email }: { email: string }) {
 
   return (
     <>
-      <header className="no-print sticky top-0 z-40 border-b border-line bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+      <header className="no-print sticky top-0 z-40 border-b border-line/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur lg:hidden">
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-white text-ink"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm"
             aria-label="فتح القائمة"
           >
             <Menu className="h-5 w-5" />
@@ -40,11 +40,16 @@ export function MobileNavigation({ email }: { email: string }) {
             aria-label="إغلاق القائمة"
             onClick={() => setIsOpen(false)}
           />
-          <aside className="absolute inset-y-0 right-0 flex w-[min(86vw,320px)] flex-col bg-ink p-4 text-white shadow-soft">
+          <aside className="absolute inset-y-0 right-0 flex w-[min(88vw,340px)] flex-col bg-[radial-gradient(circle_at_top_right,rgba(217,154,23,0.16),transparent_34%),linear-gradient(180deg,#08231f_0%,#061a17_100%)] p-4 text-white shadow-soft">
             <div className="flex items-start justify-between gap-3">
-              <Link href="/dashboard" onClick={() => setIsOpen(false)} className="min-w-0">
-                <p className="text-xl font-bold">{appBranding.name}</p>
-                <p className="mt-1 text-sm text-white/70">{appBranding.tagline}</p>
+              <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex min-w-0 items-center gap-3">
+                <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-gold/50 bg-gold/10 text-2xl font-black text-gold">
+                  ع
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-xl font-bold text-gold">{appBranding.name}</span>
+                  <span className="mt-1 block truncate text-xs text-white/70">{appBranding.tagline}</span>
+                </span>
               </Link>
               <button
                 type="button"
@@ -72,8 +77,10 @@ export function MobileNavigation({ email }: { email: string }) {
                     key={link.href}
                     href={link.href}
                     onClick={() => setIsOpen(false)}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold transition ${
-                      isActive ? "bg-white text-ink" : "text-white/82 hover:bg-white/10 hover:text-white"
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm font-semibold transition ${
+                      isActive
+                        ? "border-gold/45 bg-white/10 text-gold shadow-[inset_3px_0_0_rgba(217,154,23,0.95)]"
+                        : "border-transparent text-white/80 hover:border-white/10 hover:bg-white/10 hover:text-white"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
