@@ -1,6 +1,7 @@
 import { Eye, Pencil, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { CancelTransactionButton } from "@/components/forms/transaction-actions";
+import { BarChart, DonutChart } from "@/components/ui/analytics-charts";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -61,6 +62,21 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
       deliveredStatus,
     }),
   ]);
+  const statusChartItems = transferStatusValues.map((item) => ({
+    label: transferStatusLabels[item],
+    value: transactions.filter((transaction) => transaction.status === item).length,
+  }));
+  const typeChartItems = transferTypeValues.map((item) => ({
+    label: transferTypeLabels[item],
+    value: transactions.filter((transaction) => transaction.type === item).length,
+  }));
+  const currencyChartItems = currencyValues.map((item) => ({
+    label: item,
+    value: transactions.filter(
+      (transaction) => transaction.receivedCurrency === item || transaction.deliveredCurrency === item,
+    ).length,
+    caption: currencyLabels[item],
+  }));
 
   return (
     <div className="grid gap-6">
@@ -148,6 +164,24 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
           </div>
         </form>
       </Card>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <DonutChart
+          title="حالة المعاملات"
+          subtitle="حسب الفلاتر الحالية"
+          items={statusChartItems}
+          centerLabel="معاملة"
+          centerValue={String(transactions.length)}
+        />
+        <BarChart title="نوع المعاملة" subtitle="عدد المعاملات لكل نوع" points={typeChartItems} />
+        <DonutChart
+          title="العملات المستخدمة"
+          subtitle="عدد ظهور العملة في الاستلام أو التسليم"
+          items={currencyChartItems}
+          centerLabel="سجل"
+          centerValue={String(transactions.length)}
+        />
+      </div>
 
       <Card title="العمليات">
         {transactions.length === 0 ? (

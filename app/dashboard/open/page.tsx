@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CompleteStepButton } from "@/components/forms/transaction-actions";
+import { BarChart, DonutChart } from "@/components/ui/analytics-charts";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -16,6 +17,39 @@ import { getOpenTransfers } from "@/lib/transfer-service";
 
 export default async function OpenTransactionsPage() {
   const report = await getOpenTransfers();
+  const openSideItems = [
+    {
+      label: "علينا للعملاء",
+      value: report.transactions.filter(
+        (transaction) => transaction.receivedStatus === "RECEIVED" && transaction.deliveredStatus !== "DELIVERED",
+      ).length,
+    },
+    {
+      label: "لنا عند العملاء",
+      value: report.transactions.filter(
+        (transaction) => transaction.receivedStatus !== "RECEIVED" && transaction.deliveredStatus === "DELIVERED",
+      ).length,
+    },
+    {
+      label: "لم تبدأ بعد",
+      value: report.transactions.filter(
+        (transaction) => transaction.receivedStatus !== "RECEIVED" && transaction.deliveredStatus !== "DELIVERED",
+      ).length,
+    },
+  ];
+  const openCurrencyItems = currencies.map((currency) => ({
+    label: currency,
+    value: report.transactions.filter((transaction) => {
+      if (transaction.receivedStatus === "RECEIVED" && transaction.deliveredStatus !== "DELIVERED") {
+        return transaction.deliveredCurrency === currency;
+      }
+      if (transaction.receivedStatus !== "RECEIVED" && transaction.deliveredStatus === "DELIVERED") {
+        return transaction.receivedCurrency === currency;
+      }
+      return transaction.receivedCurrency === currency || transaction.deliveredCurrency === currency;
+    }).length,
+    caption: currencyLabels[currency],
+  }));
 
   return (
     <div className="grid gap-6">
@@ -45,6 +79,17 @@ export default async function OpenTransactionsPage() {
             ))}
           </div>
         </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <DonutChart
+          title="توزيع العمليات المفتوحة"
+          subtitle="حسب نوع المبلغ المتبقي"
+          items={openSideItems}
+          centerLabel="عملية"
+          centerValue={String(report.transactions.length)}
+        />
+        <BarChart title="المتبقي حسب العملة" subtitle="عدد العمليات المفتوحة لكل عملة" points={openCurrencyItems} />
       </div>
 
       <Card title="العمليات المفتوحة">

@@ -1,5 +1,6 @@
 import { ArrowLeft, PlusCircle } from "lucide-react";
 import Link from "next/link";
+import { BarChart, DonutChart, MiniLineChart } from "@/components/ui/analytics-charts";
 import { Badge } from "@/components/ui/badge";
 import { Card, StatCard } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -16,6 +17,13 @@ import { getTodayDashboard } from "@/lib/transfer-service";
 
 export default async function DashboardPage() {
   const dashboard = await getTodayDashboard();
+  const latestProfitPoints = dashboard.latestTransactions
+    .slice()
+    .reverse()
+    .map((transaction, index) => ({
+      label: `${index + 1}`,
+      value: transaction.profitAmount,
+    }));
 
   return (
     <div className="grid gap-6">
@@ -73,6 +81,34 @@ export default async function DashboardPage() {
             ))}
           </div>
         </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr_0.9fr]">
+        <MiniLineChart
+          title="حركة ربح اليوم"
+          subtitle="حسب أحدث العمليات المسجلة"
+          points={latestProfitPoints}
+          tone="green"
+        />
+        <DonutChart
+          title="توزيع الاستلام حسب العملة"
+          subtitle="إجمالي ما دخل اليوم"
+          items={currencies.map((currency) => ({
+            label: currency,
+            value: dashboard.receivedTotals[currency],
+            caption: currencyLabels[currency],
+          }))}
+          centerLabel="عمليات"
+          centerValue={formatDecimal(dashboard.transactionsCount)}
+        />
+        <BarChart
+          title="ربح اليوم حسب العملة"
+          subtitle="بدون تحويل بين العملات"
+          points={currencies.map((currency) => ({
+            label: currency,
+            value: dashboard.profitTotals[currency],
+          }))}
+        />
       </div>
 
       <Card title="أحدث العمليات">

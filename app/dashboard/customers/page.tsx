@@ -2,9 +2,10 @@ import { Eye, Pencil, Search } from "lucide-react";
 import Link from "next/link";
 import { CustomerForm } from "@/components/forms/customer-form";
 import { DeleteCustomerButton } from "@/components/forms/delete-customer-button";
+import { BarChart, DonutChart, RankingChart } from "@/components/ui/analytics-charts";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { currencies } from "@/lib/calculations";
+import { currencies, toDecimal } from "@/lib/calculations";
 import { formatMoney } from "@/lib/format";
 import { currencyLabels } from "@/lib/options";
 import { getCustomerListWithTransferSummary } from "@/lib/transfer-service";
@@ -17,6 +18,28 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const params = (await searchParams) ?? {};
   const q = typeof params.q === "string" ? params.q.trim() : "";
   const rows = await getCustomerListWithTransferSummary(q);
+  const customersWithOwe = rows.filter(({ open }) =>
+    currencies.some((currency) => toDecimal(open.oweCustomer[currency]).gt(0)),
+  ).length;
+  const customersOweUs = rows.filter(({ open }) =>
+    currencies.some((currency) => toDecimal(open.customerOwesUs[currency]).gt(0)),
+  ).length;
+  const customerStatusItems = [
+    { label: "علينا له", value: customersWithOwe },
+    { label: "لنا عنده", value: customersOweUs },
+    {
+      label: "بدون متبقي",
+      value: rows.length - Math.min(rows.length, customersWithOwe + customersOweUs),
+    },
+  ];
+  const activeCustomerRows = rows
+    .map(({ customer, operationsCount }) => ({
+      label: customer.name,
+      value: operationsCount,
+      caption: "عملية",
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
 
   return (
     <div className="grid gap-6">
@@ -28,6 +51,18 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
       <Card title="إضافة عميل أو تاجر">
         <CustomerForm />
       </Card>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <DonutChart
+          title="حالة العملاء"
+          subtitle="حسب المبالغ المتبقية"
+          items={customerStatusItems}
+          centerLabel="عميل"
+          centerValue={String(rows.length)}
+        />
+        <BarChart title="أكثر العملاء تعاملًا" subtitle="حسب عدد العمليات" points={activeCustomerRows} />
+        <RankingChart title="نشاط العملاء" rows={activeCustomerRows} />
+      </div>
 
       <Card title="قائمة العملاء والتجار">
         <form className="mb-4 flex flex-col gap-3 md:flex-row">

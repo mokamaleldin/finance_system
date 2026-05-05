@@ -2,6 +2,7 @@ import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { DeleteExpenseButton } from "@/components/forms/expense-actions";
 import { ExpenseForm } from "@/components/forms/expense-form";
+import { BarChart, DonutChart } from "@/components/ui/analytics-charts";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getExpense, getExpenses } from "@/lib/expense-service";
@@ -41,12 +42,39 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
   if (category) filterParams.set("category", category);
   if (currencyCode) filterParams.set("currencyCode", currencyCode);
   const savedPath = `/dashboard/expenses${filterParams.toString() ? `?${filterParams.toString()}` : ""}`;
+  const categoryChartItems = expenseCategoryValues.map((item) => ({
+    label: expenseCategoryLabels[item],
+    value: expenses.filter((expense) => expense.category === item).length,
+  }));
+  const currencyChartItems = currencyValues.map((item) => ({
+    label: item,
+    value: expenses.filter((expense) => expense.currencyCode === item).length,
+    caption: currencyLabels[item],
+  }));
 
   return (
     <div className="grid gap-6">
       <div className="rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
         <h2 className="text-3xl font-bold text-ink">المصاريف</h2>
         <p className="mt-1 text-sm text-muted">سجل مصاريف التشغيل بعيدًا عن ربح العمليات، وستظهر في التقارير وصافي الربح.</p>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <DonutChart
+          title="توزيع المصاريف حسب النوع"
+          subtitle="عدد المصاريف في النتائج الحالية"
+          items={categoryChartItems}
+          centerLabel="مصروف"
+          centerValue={String(expenses.length)}
+        />
+        <BarChart title="نشاط المصاريف" subtitle="عدد السجلات لكل نوع" points={categoryChartItems} />
+        <DonutChart
+          title="توزيع المصاريف حسب العملة"
+          subtitle="عدد السجلات فقط بدون تحويل العملات"
+          items={currencyChartItems}
+          centerLabel="سجل"
+          centerValue={String(expenses.length)}
+        />
       </div>
 
       <Card title={editingExpense ? "تعديل مصروف" : "إضافة مصروف"}>

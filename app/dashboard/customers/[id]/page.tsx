@@ -1,6 +1,7 @@
 import { FileText } from "lucide-react";
 import Link from "next/link";
 import { CustomerForm } from "@/components/forms/customer-form";
+import { BarChart, DonutChart, MiniLineChart } from "@/components/ui/analytics-charts";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -22,6 +23,21 @@ type CustomerDetailPageProps = {
 export default async function CustomerDetailPage({ params }: CustomerDetailPageProps) {
   const { id } = await params;
   const summary = await getCustomerTransferSummary(id);
+  const activityByDate = Object.values(
+    summary.transactions.reduce(
+      (rows, transaction) => {
+        const label = formatDate(transaction.date).slice(0, 5);
+        rows[label] = { label, value: (rows[label]?.value ?? 0) + 1 };
+        return rows;
+      },
+      {} as Record<string, { label: string; value: number }>,
+    ),
+  ).slice(-8);
+  const currencyActivity = currencies.map((currency) => ({
+    label: currency,
+    value: summary.transactions.filter((transaction) => transaction.receivedCurrency === currency).length,
+    caption: currencyLabels[currency],
+  }));
 
   return (
     <div className="grid gap-6">
@@ -114,6 +130,25 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
             ))}
           </div>
         </Card>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr_0.9fr]">
+        <MiniLineChart title="نشاط العميل" subtitle="عدد العمليات حسب الأيام المعروضة" points={activityByDate} />
+        <DonutChart
+          title="توزيع العملات"
+          subtitle="حسب عملة الاستلام في عمليات العميل"
+          items={currencyActivity}
+          centerLabel="عملية"
+          centerValue={String(summary.transactions.length)}
+        />
+        <BarChart
+          title="ربح العميل حسب العملة"
+          subtitle="كل عملة تظهر منفصلة"
+          points={currencies.map((currency) => ({
+            label: currency,
+            value: summary.profitTotals[currency],
+          }))}
+        />
       </div>
 
       <Card title="كل عمليات العميل">

@@ -1,9 +1,10 @@
 import { FileDown } from "lucide-react";
 import Link from "next/link";
+import { BarChart, DonutChart, MiniLineChart, RankingChart } from "@/components/ui/analytics-charts";
 import { Badge } from "@/components/ui/badge";
 import { Card, StatCard } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { currencies, type DecimalInput } from "@/lib/calculations";
+import { currencies, toDecimal, type DecimalInput } from "@/lib/calculations";
 import { formatDate, formatDateInput, formatMoney, parseDateParam } from "@/lib/format";
 import {
   currencyLabels,
@@ -71,6 +72,38 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     from: formatDateInput(range.start),
     to: formatDateInput(range.end),
   });
+  const profitTrend = report.transactions
+    .slice()
+    .reverse()
+    .slice(-7)
+    .map((transaction) => ({
+      label: formatDate(transaction.date).slice(0, 5),
+      value: transaction.profitAmount,
+    }));
+  const expenseTrend = report.expenses
+    .slice()
+    .reverse()
+    .slice(-7)
+    .map((expense) => ({
+      label: formatDate(expense.date).slice(0, 5),
+      value: expense.amount,
+    }));
+  const customerActivityRows = Object.values(
+    report.transactions.reduce(
+      (rows, transaction) => {
+        const key = transaction.customerNameSnapshot || "بدون اسم";
+        rows[key] = {
+          label: key,
+          value: toDecimal(rows[key]?.value).plus(1),
+          caption: "عملية",
+        };
+        return rows;
+      },
+      {} as Record<string, { label: string; value: DecimalInput; caption?: string }>,
+    ),
+    )
+    .sort((a, b) => toDecimal(b.value).minus(toDecimal(a.value)).toNumber())
+    .slice(0, 5);
 
   return (
     <div className="grid gap-6">
@@ -149,6 +182,26 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         <TotalsCard title="العمولات" totals={report.commissionTotals} />
         <TotalsCard title="صافي الربح" totals={report.netProfitTotals} tone="mint" />
       </div>
+
+      <div className="grid gap-4 xl:grid-cols-3">
+        <MiniLineChart title="الأرباح عبر الفترة" subtitle="حسب العمليات المعروضة" points={profitTrend} />
+        <BarChart title="المصاريف عبر الفترة" subtitle="حسب المصاريف المسجلة" points={expenseTrend} tone="red" />
+        <DonutChart
+          title="توزيع الاستلام حسب العملة"
+          subtitle="لنفس الفترة المختارة"
+          items={currencies.map((currency) => ({
+            label: currency,
+            value: report.receivedTotals[currency],
+            caption: currencyLabels[currency],
+          }))}
+          centerLabel="عملية"
+          centerValue={String(report.transactionsCount)}
+        />
+      </div>
+
+      {customerActivityRows.length > 0 ? (
+        <RankingChart title="أكثر العملاء نشاطًا" rows={customerActivityRows} />
+      ) : null}
 
       <Card title="عمليات الفترة">
         {report.transactions.length === 0 ? (
