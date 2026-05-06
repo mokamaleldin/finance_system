@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw } from "lucide-react";
+import { ArrowUpDown, CalendarDays, RotateCcw, UserRound, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
@@ -56,37 +56,40 @@ export function TransactionsFilterForm({ customers, defaultValues }: Transaction
   const status = searchParams.get("status") ?? defaultValues.status ?? "";
   const currency = searchParams.get("currency") ?? defaultValues.currency ?? "";
 
+  const fieldClassName =
+    "min-h-12 w-full appearance-none rounded-lg border border-line bg-white py-2 pl-3 pr-10 text-sm font-semibold outline-none transition focus:border-olive";
+
   return (
-    <div className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-6 ${isPending ? "opacity-80" : ""}`}>
-      <div className="min-w-0">
-        <label className="text-sm font-semibold text-ink">من تاريخ</label>
+    <div className={`grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-[repeat(6,minmax(135px,1fr))_auto] ${isPending ? "opacity-80" : ""}`}>
+      <label className="relative min-w-0">
+        <span className="mb-2 block text-sm font-semibold text-ink">من تاريخ</span>
+        <CalendarDays className="pointer-events-none absolute right-3 top-[46px] h-4 w-4 text-muted" />
         <input
-          name="from"
           type="date"
           dir="ltr"
           value={from}
           onChange={(event) => updateParams({ from: event.target.value })}
-          className="mt-2 w-full rounded-lg border border-line px-3 py-2"
+          className={fieldClassName}
         />
-      </div>
-      <div className="min-w-0">
-        <label className="text-sm font-semibold text-ink">إلى تاريخ</label>
+      </label>
+      <label className="relative min-w-0">
+        <span className="mb-2 block text-sm font-semibold text-ink">إلى تاريخ</span>
+        <CalendarDays className="pointer-events-none absolute right-3 top-[46px] h-4 w-4 text-muted" />
         <input
-          name="to"
           type="date"
           dir="ltr"
           value={to}
           onChange={(event) => updateParams({ to: event.target.value })}
-          className="mt-2 w-full rounded-lg border border-line px-3 py-2"
+          className={fieldClassName}
         />
-      </div>
-      <div className="min-w-0">
-        <label className="text-sm font-semibold text-ink">العميل/التاجر</label>
+      </label>
+      <label className="relative min-w-0">
+        <span className="mb-2 block text-sm font-semibold text-ink">العميل/التاجر</span>
+        <UserRound className="pointer-events-none absolute right-3 top-[46px] h-4 w-4 text-muted" />
         <select
-          name="customerId"
           value={customerId}
           onChange={(event) => updateParams({ customerId: event.target.value })}
-          className="mt-2 w-full rounded-lg border border-line px-3 py-2"
+          className={fieldClassName}
         >
           <option value="">الكل</option>
           {customers.map((customer) => (
@@ -95,14 +98,14 @@ export function TransactionsFilterForm({ customers, defaultValues }: Transaction
             </option>
           ))}
         </select>
-      </div>
-      <div className="min-w-0">
-        <label className="text-sm font-semibold text-ink">نوع العملية</label>
+      </label>
+      <label className="relative min-w-0">
+        <span className="mb-2 block text-sm font-semibold text-ink">نوع العملية</span>
+        <ArrowUpDown className="pointer-events-none absolute right-3 top-[46px] h-4 w-4 text-muted" />
         <select
-          name="type"
           value={type}
           onChange={(event) => updateParams({ type: event.target.value })}
-          className="mt-2 w-full rounded-lg border border-line px-3 py-2"
+          className={fieldClassName}
         >
           <option value="">الكل</option>
           {transferTypeValues.map((item) => (
@@ -111,14 +114,14 @@ export function TransactionsFilterForm({ customers, defaultValues }: Transaction
             </option>
           ))}
         </select>
-      </div>
-      <div className="min-w-0">
-        <label className="text-sm font-semibold text-ink">حالة العملية</label>
+      </label>
+      <label className="relative min-w-0">
+        <span className="mb-2 block text-sm font-semibold text-ink">حالة العملية</span>
+        <ArrowUpDown className="pointer-events-none absolute right-3 top-[46px] h-4 w-4 text-muted" />
         <select
-          name="status"
           value={status}
           onChange={(event) => updateParams({ status: event.target.value })}
-          className="mt-2 w-full rounded-lg border border-line px-3 py-2"
+          className={fieldClassName}
         >
           <option value="">غير الملغاة</option>
           {transferStatusValues.map((item) => (
@@ -127,14 +130,14 @@ export function TransactionsFilterForm({ customers, defaultValues }: Transaction
             </option>
           ))}
         </select>
-      </div>
-      <div className="min-w-0">
-        <label className="text-sm font-semibold text-ink">العملة</label>
+      </label>
+      <label className="relative min-w-0">
+        <span className="mb-2 block text-sm font-semibold text-ink">العملة</span>
+        <WalletCards className="pointer-events-none absolute right-3 top-[46px] h-4 w-4 text-muted" />
         <select
-          name="currency"
           value={currency}
           onChange={(event) => updateParams({ currency: event.target.value })}
-          className="mt-2 w-full rounded-lg border border-line px-3 py-2"
+          className={fieldClassName}
         >
           <option value="">الكل</option>
           {currencyValues.map((item) => (
@@ -143,9 +146,9 @@ export function TransactionsFilterForm({ customers, defaultValues }: Transaction
             </option>
           ))}
         </select>
-      </div>
-      <div className="flex items-end sm:col-span-2 lg:col-span-6 lg:justify-start">
-        <Link href="/dashboard/transactions" className="action-secondary w-full sm:w-[220px]">
+      </label>
+      <div className="flex items-end md:col-span-2 xl:col-span-3 2xl:col-span-1">
+        <Link href="/dashboard/transactions" className="action-secondary min-h-12 w-full px-5">
           <RotateCcw className="h-4 w-4" />
           إعادة ضبط
         </Link>

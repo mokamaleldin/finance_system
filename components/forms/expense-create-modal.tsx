@@ -2,6 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ExpenseForm } from "@/components/forms/expense-form";
 
 type ExpenseCreateModalProps = {
@@ -10,6 +11,11 @@ type ExpenseCreateModalProps = {
 
 export function ExpenseCreateModal({ onSavedPath = "/dashboard/expenses" }: ExpenseCreateModalProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,39 +42,46 @@ export function ExpenseCreateModal({ onSavedPath = "/dashboard/expenses" }: Expe
         إضافة مصروف
       </button>
 
-      {isOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/45 p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="expense-create-title"
-          onMouseDown={() => setIsOpen(false)}
-        >
-          <div
-            className="w-full max-w-3xl rounded-lg border border-line/80 bg-white p-4 shadow-2xl sm:p-6"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div className="mb-5 flex items-center justify-between gap-3 border-b border-line/70 pb-4">
-              <div>
-                <h3 id="expense-create-title" className="text-xl font-bold text-ink">
-                  إضافة مصروف
-                </h3>
-                <p className="mt-1 text-sm text-muted">سجل المصروفات اليومية بعيدًا عن ربح العمليات.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-white text-muted hover:bg-paper hover:text-ink"
-                aria-label="إغلاق"
+      {mounted && isOpen
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/45 p-4 backdrop-blur-sm"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="expense-create-title"
+              onMouseDown={() => setIsOpen(false)}
+            >
+              <div
+                className="w-full max-w-2xl rounded-lg border border-line/80 bg-white p-4 shadow-2xl sm:p-6"
+                onMouseDown={(event) => event.stopPropagation()}
               >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+                <div className="mb-5 flex items-center justify-between gap-3 border-b border-line/70 pb-4">
+                  <div>
+                    <h3 id="expense-create-title" className="text-xl font-bold text-ink">
+                      إضافة مصروف
+                    </h3>
+                    <p className="mt-1 text-sm text-muted">سجل المصروفات اليومية بعيدًا عن ربح العمليات.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-white text-muted hover:bg-paper hover:text-ink"
+                    aria-label="إغلاق"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
 
-            <ExpenseForm onSavedPath={onSavedPath} onSaved={() => setIsOpen(false)} />
-          </div>
-        </div>
-      ) : null}
+                <ExpenseForm
+                  onSavedPath={onSavedPath}
+                  onSaved={() => setIsOpen(false)}
+                  onCancel={() => setIsOpen(false)}
+                />
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

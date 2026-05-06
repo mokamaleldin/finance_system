@@ -21,6 +21,7 @@ type ExpenseFormProps = {
   initialValues?: Partial<ExpenseFormValues>;
   onSavedPath?: string;
   onSaved?: () => void;
+  onCancel?: () => void;
 };
 
 function toEnglishDigits(value: string) {
@@ -34,7 +35,7 @@ function toEnglishDigits(value: string) {
     .replace("٬", "");
 }
 
-export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboard/expenses", onSaved }: ExpenseFormProps) {
+export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboard/expenses", onSaved, onCancel }: ExpenseFormProps) {
   const router = useRouter();
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -147,14 +148,17 @@ export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboar
 
       {serverError ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{serverError}</p> : null}
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="action-primary w-full sm:w-fit"
-      >
-        <Save className="h-4 w-4" />
-        {expenseId ? "حفظ التعديل" : "إضافة المصروف"}
-      </button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        {onCancel ? (
+          <button type="button" onClick={onCancel} className="action-secondary w-full sm:w-fit">
+            إلغاء
+          </button>
+        ) : null}
+        <button type="submit" disabled={isSubmitting} className="action-primary w-full sm:w-fit">
+          <Save className="h-4 w-4" />
+          {expenseId ? "حفظ التعديل" : "إضافة المصروف"}
+        </button>
+      </div>
     </form>
   );
 }

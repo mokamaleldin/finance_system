@@ -4,7 +4,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function CancelTransactionButton({ transactionId }: { transactionId: string }) {
+export function CancelTransactionButton({ transactionId, compact = false }: { transactionId: string; compact?: boolean }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,10 +34,15 @@ export function CancelTransactionButton({ transactionId }: { transactionId: stri
       type="button"
       onClick={cancel}
       disabled={isLoading}
-      className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60 md:px-2 md:py-1"
+      className={
+        compact
+          ? "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-60"
+          : "inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60 md:px-2 md:py-1"
+      }
+      title="إلغاء"
     >
       <XCircle className="h-3.5 w-3.5" />
-      إلغاء
+      <span className={compact ? "sr-only" : ""}>إلغاء</span>
     </button>
   );
 }

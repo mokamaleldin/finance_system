@@ -54,9 +54,9 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-4 shadow-soft backdrop-blur sm:p-5">
         <div>
-          <h2 className="text-3xl font-bold text-ink">سجل المعاملات</h2>
+          <h2 className="text-2xl font-bold text-ink sm:text-3xl">سجل المعاملات</h2>
           <p className="mt-1 text-sm text-muted">كل عمليات التحويل مع حالة الاستلام والتسليم والربح.</p>
         </div>
         <Link href="/dashboard/transactions/new" className="action-primary w-full sm:w-auto">
@@ -65,7 +65,11 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
         </Link>
       </div>
 
-      <Card title="الفلاتر">
+      <section className="rounded-lg border border-line/80 bg-white/95 p-4 shadow-soft sm:p-5">
+        <div className="mb-5 border-b border-line/70 pb-3">
+          <h3 className="text-xl font-bold text-ink">الفلاتر</h3>
+          <p className="mt-1 text-sm text-muted">غيّر أي فلتر وسيتم تحديث السجل مباشرة.</p>
+        </div>
         <TransactionsFilterForm
           customers={customers}
           defaultValues={{
@@ -77,7 +81,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
             currency: currency || "",
           }}
         />
-      </Card>
+      </section>
 
       <Card title="العمليات">
         {transactions.length === 0 ? (
@@ -146,18 +150,18 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
               ))}
             </div>
 
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1250px] text-sm">
+            <div className="hidden max-w-full overflow-x-auto rounded-lg border border-line/70 md:block">
+              <table className="w-full min-w-[1100px] text-xs lg:text-sm [&_td]:px-2 [&_th]:px-2">
                 <thead>
                   <tr className="border-b border-line text-right text-muted">
                     <th className="py-3 font-semibold">التاريخ</th>
                     <th className="py-3 font-semibold">العميل</th>
                     <th className="py-3 font-semibold">النوع</th>
                     <th className="py-3 font-semibold">استلمنا</th>
-                    <th className="py-3 font-semibold">سلمنا / مطلوب</th>
-                    <th className="py-3 font-semibold">سعر التكلفة</th>
+                    <th className="py-3 font-semibold">سنسلم</th>
+                    <th className="py-3 font-semibold">التكلفة</th>
                     <th className="py-3 font-semibold">سعر العميل</th>
-                    <th className="py-3 font-semibold">ربح العملية</th>
+                    <th className="py-3 font-semibold">الربح</th>
                     <th className="py-3 font-semibold">الاستلام</th>
                     <th className="py-3 font-semibold">التسليم</th>
                     <th className="py-3 font-semibold">العمولة</th>
@@ -168,9 +172,9 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                 <tbody>
                   {transactions.map((transaction) => (
                     <tr key={transaction.id} className="border-b border-line/70">
-                      <td className="py-3">{formatDate(transaction.date)}</td>
-                      <td className="py-3 font-semibold">{transaction.customerNameSnapshot}</td>
-                      <td className="py-3">{transferTypeLabels[transaction.type]}</td>
+                      <td className="py-3 whitespace-nowrap">{formatDate(transaction.date)}</td>
+                      <td className="max-w-[140px] truncate py-3 font-semibold">{transaction.customerNameSnapshot}</td>
+                      <td className="max-w-[100px] py-3">{transferTypeLabels[transaction.type]}</td>
                       <td className="py-3">{formatMoney(transaction.receivedAmount, transaction.receivedCurrency)}</td>
                       <td className="py-3">{formatMoney(transaction.deliveredAmount, transaction.deliveredCurrency)}</td>
                       <td className="py-3">{formatDecimal(transaction.costRate)}</td>
@@ -189,16 +193,24 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                         </Badge>
                       </td>
                       <td className="py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Link href={`/dashboard/transactions/${transaction.id}`} className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
+                        <div className="flex items-center gap-1">
+                          <Link
+                            href={`/dashboard/transactions/${transaction.id}`}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm hover:bg-mint"
+                            title="عرض"
+                          >
                             <Eye className="h-3.5 w-3.5" />
-                            عرض
+                            <span className="sr-only">عرض</span>
                           </Link>
-                          <Link href={`/dashboard/transactions/${transaction.id}/edit`} className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
+                          <Link
+                            href={`/dashboard/transactions/${transaction.id}/edit`}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm hover:bg-mint"
+                            title="تعديل"
+                          >
                             <Pencil className="h-3.5 w-3.5" />
-                            تعديل
+                            <span className="sr-only">تعديل</span>
                           </Link>
-                          {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} /> : null}
+                          {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} compact /> : null}
                         </div>
                       </td>
                     </tr>
