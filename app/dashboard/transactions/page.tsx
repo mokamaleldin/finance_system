@@ -1,25 +1,20 @@
 import { Eye, Pencil, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { CancelTransactionButton } from "@/components/forms/transaction-actions";
-import { BarChart, DonutChart } from "@/components/ui/analytics-charts";
+import { TransactionsFilterForm } from "@/components/forms/transactions-filter-form";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatDate, formatDateInput, formatDecimal, formatMoney, parseOptionalDateParam } from "@/lib/format";
+import { formatDate, formatDecimal, formatMoney, parseOptionalDateParam } from "@/lib/format";
 import {
-  currencyLabels,
   currencyValues,
   deliveredStatusLabels,
-  deliveredStatusValues,
   receivedStatusLabels,
-  receivedStatusValues,
   transferStatusLabels,
   transferStatusValues,
   transferTypeLabels,
   transferTypeValues,
   type CurrencyCode,
-  type DeliveredStatusCode,
-  type ReceivedStatusCode,
   type TransferStatusCode,
   type TransferTypeCode,
 } from "@/lib/options";
@@ -41,11 +36,9 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const customerId = typeof params.customerId === "string" ? params.customerId : "";
   const type = pick(params.type, transferTypeValues) as TransferTypeCode | undefined;
   const currency = pick(params.currency, currencyValues) as CurrencyCode | undefined;
-  const receivedCurrency = pick(params.receivedCurrency, currencyValues) as CurrencyCode | undefined;
-  const deliveredCurrency = pick(params.deliveredCurrency, currencyValues) as CurrencyCode | undefined;
   const status = pick(params.status, transferStatusValues) as TransferStatusCode | undefined;
-  const receivedStatus = pick(params.receivedStatus, receivedStatusValues) as ReceivedStatusCode | undefined;
-  const deliveredStatus = pick(params.deliveredStatus, deliveredStatusValues) as DeliveredStatusCode | undefined;
+  const fromValue = typeof params.from === "string" ? params.from : "";
+  const toValue = typeof params.to === "string" ? params.to : "";
 
   const [customers, transactions] = await Promise.all([
     prisma.customer.findMany({ orderBy: { name: "asc" } }),
@@ -55,28 +48,9 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
       customerId: customerId || undefined,
       type,
       currency,
-      receivedCurrency,
-      deliveredCurrency,
       status,
-      receivedStatus,
-      deliveredStatus,
     }),
   ]);
-  const statusChartItems = transferStatusValues.map((item) => ({
-    label: transferStatusLabels[item],
-    value: transactions.filter((transaction) => transaction.status === item).length,
-  }));
-  const typeChartItems = transferTypeValues.map((item) => ({
-    label: transferTypeLabels[item],
-    value: transactions.filter((transaction) => transaction.type === item).length,
-  }));
-  const currencyChartItems = currencyValues.map((item) => ({
-    label: item,
-    value: transactions.filter(
-      (transaction) => transaction.receivedCurrency === item || transaction.deliveredCurrency === item,
-    ).length,
-    caption: currencyLabels[item],
-  }));
 
   return (
     <div className="grid gap-6">
@@ -92,96 +66,18 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
       </div>
 
       <Card title="الفلاتر">
-        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <div>
-            <label className="text-sm font-semibold text-ink">من تاريخ</label>
-            <input name="from" type="date" dir="ltr" defaultValue={from ? formatDateInput(from) : ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2" />
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">إلى تاريخ</label>
-            <input name="to" type="date" dir="ltr" defaultValue={to ? formatDateInput(to) : ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2" />
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">العميل/التاجر</label>
-            <select name="customerId" defaultValue={customerId} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">الكل</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>{customer.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">نوع العملية</label>
-            <select name="type" defaultValue={type || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">الكل</option>
-              {transferTypeValues.map((item) => <option key={item} value={item}>{transferTypeLabels[item]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">العملة</label>
-            <select name="currency" defaultValue={currency || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">الكل</option>
-              {currencyValues.map((item) => <option key={item} value={item}>{currencyLabels[item]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">حالة العملية</label>
-            <select name="status" defaultValue={status || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">غير الملغاة</option>
-              {transferStatusValues.map((item) => <option key={item} value={item}>{transferStatusLabels[item]}</option>)}
-            </select>
-          </div>
-          <div className="flex items-end sm:col-span-2 lg:col-span-1">
-            <button className="action-primary w-full">تطبيق</button>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">عملة استلمناها</label>
-            <select name="receivedCurrency" defaultValue={receivedCurrency || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">الكل</option>
-              {currencyValues.map((item) => <option key={item} value={item}>{currencyLabels[item]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">عملة سنسلمها</label>
-            <select name="deliveredCurrency" defaultValue={deliveredCurrency || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">الكل</option>
-              {currencyValues.map((item) => <option key={item} value={item}>{currencyLabels[item]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">الاستلام</label>
-            <select name="receivedStatus" defaultValue={receivedStatus || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">الكل</option>
-              {receivedStatusValues.map((item) => <option key={item} value={item}>{receivedStatusLabels[item]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">التسليم</label>
-            <select name="deliveredStatus" defaultValue={deliveredStatus || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">الكل</option>
-              {deliveredStatusValues.map((item) => <option key={item} value={item}>{deliveredStatusLabels[item]}</option>)}
-            </select>
-          </div>
-        </form>
+        <TransactionsFilterForm
+          customers={customers}
+          defaultValues={{
+            from: fromValue,
+            to: toValue,
+            customerId,
+            type: type || "",
+            status: status || "",
+            currency: currency || "",
+          }}
+        />
       </Card>
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        <DonutChart
-          title="حالة المعاملات"
-          subtitle="حسب الفلاتر الحالية"
-          items={statusChartItems}
-          centerLabel="معاملة"
-          centerValue={String(transactions.length)}
-        />
-        <BarChart title="نوع المعاملة" subtitle="عدد المعاملات لكل نوع" points={typeChartItems} />
-        <DonutChart
-          title="العملات المستخدمة"
-          subtitle="عدد ظهور العملة في الاستلام أو التسليم"
-          items={currencyChartItems}
-          centerLabel="سجل"
-          centerValue={String(transactions.length)}
-        />
-      </div>
 
       <Card title="العمليات">
         {transactions.length === 0 ? (
@@ -220,6 +116,14 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                       <span className="text-muted">الربح</span>
                       <strong>{formatMoney(transaction.profitAmount, transaction.profitCurrency)}</strong>
                     </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted">العمولة</span>
+                      <strong>
+                        {transaction.commission
+                          ? formatMoney(transaction.commission.amount, transaction.commission.currencyCode)
+                          : "-"}
+                      </strong>
+                    </div>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-1">
@@ -256,6 +160,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                     <th className="py-3 font-semibold">ربح العملية</th>
                     <th className="py-3 font-semibold">الاستلام</th>
                     <th className="py-3 font-semibold">التسليم</th>
+                    <th className="py-3 font-semibold">العمولة</th>
                     <th className="py-3 font-semibold">الحالة</th>
                     <th className="py-3 font-semibold">إجراءات</th>
                   </tr>
@@ -273,6 +178,11 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                       <td className="py-3">{formatMoney(transaction.profitAmount, transaction.profitCurrency)}</td>
                       <td className="py-3"><Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge></td>
                       <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
+                      <td className="py-3">
+                        {transaction.commission
+                          ? formatMoney(transaction.commission.amount, transaction.commission.currencyCode)
+                          : "-"}
+                      </td>
                       <td className="py-3">
                         <Badge tone={transaction.status === "COMPLETED" ? "success" : transaction.status === "CANCELLED" ? "danger" : "warning"}>
                           {transferStatusLabels[transaction.status]}

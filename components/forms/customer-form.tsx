@@ -14,9 +14,10 @@ type CustomerFormProps = {
   customerId?: string;
   initialValues?: Partial<CustomerFormValues>;
   onSavedPath?: string;
+  onSaved?: () => void;
 };
 
-export function CustomerForm({ customerId, initialValues, onSavedPath }: CustomerFormProps) {
+export function CustomerForm({ customerId, initialValues, onSavedPath, onSaved }: CustomerFormProps) {
   const router = useRouter();
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +57,7 @@ export function CustomerForm({ customerId, initialValues, onSavedPath }: Custome
     }
 
     router.refresh();
+    onSaved?.();
     if (onSavedPath) {
       router.push(onSavedPath);
     }

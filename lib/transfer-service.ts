@@ -7,7 +7,7 @@ import {
 } from "@/lib/commission";
 import { calculateTransfer, deriveTransferStatus, getRemainingSide } from "@/lib/transfer-calculations";
 import { emptyCurrencyTotals, toDecimal, toMoneyString } from "@/lib/calculations";
-import { getDateRange } from "@/lib/format";
+import { formatDateInput, getDateRange } from "@/lib/format";
 import {
   currencyValues,
   type CurrencyCode,
@@ -42,6 +42,18 @@ type TransferSummaryTransaction = {
 };
 
 type PrismaWriteClient = typeof prisma | Prisma.TransactionClient;
+
+function startOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function endOfDay(date: Date) {
+  const copy = new Date(date);
+  copy.setHours(23, 59, 59, 999);
+  return copy;
+}
 
 function normalizeMoney(value: Decimal.Value | null | undefined | { toString(): string }, scale = 4) {
   return toDecimal(value).toDecimalPlaces(scale).toFixed(scale);
@@ -400,6 +412,82 @@ export async function getTodayDashboard(today = new Date()) {
     completedCount: transactions.filter((item) => item.status === "COMPLETED").length,
     openCount: transactions.filter((item) => item.status === "OPEN").length,
   };
+}
+
+export type DashboardTrendDay = {
+  date: Date;
+  transactionsCount: number;
+  profitTotal: Decimal;
+  profitTotalsByCurrency: Record<CurrencyCode, Decimal>;
+  profitCurrency: CurrencyCode | null;
+  mixedProfitCurrencies: boolean;
+};
+
+export async function getDashboardTrends(days = 7, today = new Date()) {
+  const safeDays = Math.max(1, Math.min(days, 31));
+  const end = endOfDay(today);
+  const start = startOfDay(new Date(today));
+  start.setDate(start.getDate() - (safeDays - 1));
+
+  const transactions = await prisma.transferTransaction.findMany({
+    where: {
+      date: { gte: start, lte: end },
+      status: { not: "CANCELLED" },
+    },
+    select: {
+      date: true,
+      profitAmount: true,
+      profitCurrency: true,
+    },
+    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+  });
+
+  const daysList: DashboardTrendDay[] = [];
+  const map = new Map<string, { index: number; currencies: Set<CurrencyCode> }>();
+
+  for (let offset = 0; offset < safeDays; offset += 1) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + offset);
+    const key = formatDateInput(date);
+
+    map.set(key, { index: daysList.length, currencies: new Set() });
+    daysList.push({
+      date,
+      transactionsCount: 0,
+      profitTotal: new Decimal(0),
+      profitTotalsByCurrency: emptyCurrencyTotals(),
+      profitCurrency: null,
+      mixedProfitCurrencies: false,
+    });
+  }
+
+  for (const transaction of transactions) {
+    const key = formatDateInput(transaction.date);
+    const entry = map.get(key);
+    if (!entry) {
+      continue;
+    }
+
+    const day = daysList[entry.index];
+    day.transactionsCount += 1;
+    day.profitTotal = day.profitTotal.plus(transaction.profitAmount);
+    day.profitTotalsByCurrency[transaction.profitCurrency] =
+      day.profitTotalsByCurrency[transaction.profitCurrency].plus(transaction.profitAmount);
+    entry.currencies.add(transaction.profitCurrency);
+  }
+
+  for (const entry of map.values()) {
+    const day = daysList[entry.index];
+    const currencies = Array.from(entry.currencies);
+    if (currencies.length === 1) {
+      day.profitCurrency = currencies[0];
+    }
+    if (currencies.length > 1) {
+      day.mixedProfitCurrencies = true;
+    }
+  }
+
+  return daysList;
 }
 
 export function calculateOpenSummary(transactions: TransferSummaryTransaction[]) {

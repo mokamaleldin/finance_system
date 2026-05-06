@@ -146,7 +146,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
           subtitle="كل عملة تظهر منفصلة"
           points={currencies.map((currency) => ({
             label: currency,
-            value: summary.profitTotals[currency],
+            value: String(summary.profitTotals[currency]),
           }))}
         />
       </div>

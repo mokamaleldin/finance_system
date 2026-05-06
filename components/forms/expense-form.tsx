@@ -20,6 +20,7 @@ type ExpenseFormProps = {
   expenseId?: string;
   initialValues?: Partial<ExpenseFormValues>;
   onSavedPath?: string;
+  onSaved?: () => void;
 };
 
 function toEnglishDigits(value: string) {
@@ -33,7 +34,7 @@ function toEnglishDigits(value: string) {
     .replace("٬", "");
 }
 
-export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboard/expenses" }: ExpenseFormProps) {
+export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboard/expenses", onSaved }: ExpenseFormProps) {
   const router = useRouter();
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,6 +71,7 @@ export function ExpenseForm({ expenseId, initialValues, onSavedPath = "/dashboar
       return;
     }
 
+    onSaved?.();
     router.push(onSavedPath);
     router.refresh();
   }

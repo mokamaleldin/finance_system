@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { CompleteStepButton } from "@/components/forms/transaction-actions";
-import { BarChart, DonutChart } from "@/components/ui/analytics-charts";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -17,39 +16,6 @@ import { getOpenTransfers } from "@/lib/transfer-service";
 
 export default async function OpenTransactionsPage() {
   const report = await getOpenTransfers();
-  const openSideItems = [
-    {
-      label: "علينا للعملاء",
-      value: report.transactions.filter(
-        (transaction) => transaction.receivedStatus === "RECEIVED" && transaction.deliveredStatus !== "DELIVERED",
-      ).length,
-    },
-    {
-      label: "لنا عند العملاء",
-      value: report.transactions.filter(
-        (transaction) => transaction.receivedStatus !== "RECEIVED" && transaction.deliveredStatus === "DELIVERED",
-      ).length,
-    },
-    {
-      label: "لم تبدأ بعد",
-      value: report.transactions.filter(
-        (transaction) => transaction.receivedStatus !== "RECEIVED" && transaction.deliveredStatus !== "DELIVERED",
-      ).length,
-    },
-  ];
-  const openCurrencyItems = currencies.map((currency) => ({
-    label: currency,
-    value: report.transactions.filter((transaction) => {
-      if (transaction.receivedStatus === "RECEIVED" && transaction.deliveredStatus !== "DELIVERED") {
-        return transaction.deliveredCurrency === currency;
-      }
-      if (transaction.receivedStatus !== "RECEIVED" && transaction.deliveredStatus === "DELIVERED") {
-        return transaction.receivedCurrency === currency;
-      }
-      return transaction.receivedCurrency === currency || transaction.deliveredCurrency === currency;
-    }).length,
-    caption: currencyLabels[currency],
-  }));
 
   return (
     <div className="grid gap-6">
@@ -60,36 +26,35 @@ export default async function OpenTransactionsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="علينا للعملاء">
-          <div className="grid gap-2">
-            {currencies.map((currency) => (
-              <div key={currency} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-mint px-3 py-2">
-                <span>{currencyLabels[currency]}</span>
-                <strong>{formatMoney(report.oweCustomer[currency], currency)}</strong>
-              </div>
-            ))}
+          <div className="rounded-xl border border-line/70 bg-mint/40 p-3">
+            <div className="grid divide-y divide-line/60">
+              {currencies.map((currency) => (
+                <div key={currency} className="flex items-center justify-between gap-3 py-3 first:pt-1 last:pb-1">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink">{currencyLabels[currency]}</p>
+                    <p className="mt-0.5 text-xs text-muted">{currency}</p>
+                  </div>
+                  <p className="text-lg font-bold text-ink tabular-nums">{formatMoney(report.oweCustomer[currency], currency)}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
         <Card title="لنا عند العملاء">
-          <div className="grid gap-2">
-            {currencies.map((currency) => (
-              <div key={currency} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-paper px-3 py-2">
-                <span>{currencyLabels[currency]}</span>
-                <strong>{formatMoney(report.customerOwesUs[currency], currency)}</strong>
-              </div>
-            ))}
+          <div className="rounded-xl border border-line/70 bg-paper/70 p-3">
+            <div className="grid divide-y divide-line/60">
+              {currencies.map((currency) => (
+                <div key={currency} className="flex items-center justify-between gap-3 py-3 first:pt-1 last:pb-1">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink">{currencyLabels[currency]}</p>
+                    <p className="mt-0.5 text-xs text-muted">{currency}</p>
+                  </div>
+                  <p className="text-lg font-bold text-ink tabular-nums">{formatMoney(report.customerOwesUs[currency], currency)}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <DonutChart
-          title="توزيع العمليات المفتوحة"
-          subtitle="حسب نوع المبلغ المتبقي"
-          items={openSideItems}
-          centerLabel="عملية"
-          centerValue={String(report.transactions.length)}
-        />
-        <BarChart title="المتبقي حسب العملة" subtitle="عدد العمليات المفتوحة لكل عملة" points={openCurrencyItems} />
       </div>
 
       <Card title="العمليات المفتوحة">

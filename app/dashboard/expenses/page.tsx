@@ -1,6 +1,8 @@
 import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { DeleteExpenseButton } from "@/components/forms/expense-actions";
+import { ExpenseCreateModal } from "@/components/forms/expense-create-modal";
+import { ExpenseFilterForm } from "@/components/forms/expense-filter-form";
 import { ExpenseForm } from "@/components/forms/expense-form";
 import { BarChart, DonutChart } from "@/components/ui/analytics-charts";
 import { Card } from "@/components/ui/card";
@@ -15,6 +17,7 @@ import {
   type CurrencyCode,
   type ExpenseCategoryCode,
 } from "@/lib/options";
+import { toDecimal } from "@/lib/calculations";
 
 type ExpensesPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -46,17 +49,25 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
     label: expenseCategoryLabels[item],
     value: expenses.filter((expense) => expense.category === item).length,
   }));
-  const currencyChartItems = currencyValues.map((item) => ({
-    label: item,
-    value: expenses.filter((expense) => expense.currencyCode === item).length,
-    caption: currencyLabels[item],
-  }));
+  const currencyTotals = currencyValues.reduce(
+    (totals, currency) => {
+      totals[currency] = toDecimal(0);
+      return totals;
+    },
+    {} as Record<CurrencyCode, ReturnType<typeof toDecimal>>,
+  );
+  for (const expense of expenses) {
+    currencyTotals[expense.currencyCode] = toDecimal(currencyTotals[expense.currencyCode]).plus(expense.amount);
+  }
 
   return (
     <div className="grid gap-6">
-      <div className="rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
-        <h2 className="text-3xl font-bold text-ink">المصاريف</h2>
-        <p className="mt-1 text-sm text-muted">سجل مصاريف التشغيل بعيدًا عن ربح العمليات، وستظهر في التقارير وصافي الربح.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+        <div>
+          <h2 className="text-3xl font-bold text-ink">المصاريف</h2>
+          <p className="mt-1 text-sm text-muted">سجل مصاريف التشغيل بعيدًا عن ربح العمليات، وستظهر في التقارير وصافي الربح.</p>
+        </div>
+        {!editingExpense ? <ExpenseCreateModal onSavedPath={savedPath} /> : null}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
@@ -67,73 +78,56 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
           centerLabel="مصروف"
           centerValue={String(expenses.length)}
         />
-        <BarChart title="نشاط المصاريف" subtitle="عدد السجلات لكل نوع" points={categoryChartItems} />
-        <DonutChart
-          title="توزيع المصاريف حسب العملة"
-          subtitle="عدد السجلات فقط بدون تحويل العملات"
-          items={currencyChartItems}
-          centerLabel="سجل"
-          centerValue={String(expenses.length)}
-        />
+        <BarChart title="نشاط المصاريف" subtitle="عدد السجلات لكل نوع" points={categoryChartItems} hoverable />
+        <Card title="صرفنا من كل عملة" subtitle="إجمالي المصاريف لكل عملة في النتائج الحالية">
+          <div className="rounded-xl border border-line/70 bg-paper/70 p-3">
+            <div className="grid divide-y divide-line/60">
+              {currencyValues.map((currency) => (
+                <div key={currency} className="flex items-center justify-between gap-3 py-3 first:pt-1 last:pb-1">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink">{currencyLabels[currency]}</p>
+                    <p className="mt-0.5 text-xs text-muted">{currency}</p>
+                  </div>
+                  <p className="text-lg font-bold text-ink tabular-nums">{formatMoney(currencyTotals[currency], currency)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
       </div>
 
-      <Card title={editingExpense ? "تعديل مصروف" : "إضافة مصروف"}>
-        <ExpenseForm
-          expenseId={editingExpense?.id}
-          onSavedPath={savedPath}
-          initialValues={
-            editingExpense
-              ? {
-                  date: formatDateInput(editingExpense.date),
-                  category: editingExpense.category,
-                  description: editingExpense.description,
-                  amount: editingExpense.amount.toString(),
-                  currencyCode: editingExpense.currencyCode,
-                  notes: editingExpense.notes || "",
-                }
-              : undefined
-          }
-        />
-        {editingExpense ? (
+      {editingExpense ? (
+        <Card title="تعديل مصروف">
+          <ExpenseForm
+            expenseId={editingExpense.id}
+            onSavedPath={savedPath}
+            initialValues={{
+              date: formatDateInput(editingExpense.date),
+              category: editingExpense.category,
+              description: editingExpense.description,
+              amount: editingExpense.amount.toString(),
+              currencyCode: editingExpense.currencyCode,
+              notes: editingExpense.notes || "",
+            }}
+          />
           <Link href={savedPath} className="mt-3 inline-flex text-sm font-semibold text-olive hover:text-ink">
             إلغاء التعديل
           </Link>
-        ) : null}
-      </Card>
+        </Card>
+      ) : null}
 
-      <Card title="الفلاتر">
-        <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label className="text-sm font-semibold text-ink">من تاريخ</label>
-            <input name="from" type="date" dir="ltr" defaultValue={from ? formatDateInput(from) : ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2" />
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">إلى تاريخ</label>
-            <input name="to" type="date" dir="ltr" defaultValue={to ? formatDateInput(to) : ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2" />
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">نوع المصروف</label>
-            <select name="category" defaultValue={category || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">الكل</option>
-              {expenseCategoryValues.map((item) => (
-                <option key={item} value={item}>{expenseCategoryLabels[item]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-ink">العملة</label>
-            <select name="currencyCode" defaultValue={currencyCode || ""} className="mt-2 w-full rounded-lg border border-line px-3 py-2">
-              <option value="">الكل</option>
-              {currencyValues.map((item) => (
-                <option key={item} value={item}>{currencyLabels[item]}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-end sm:col-span-2 lg:col-span-4">
-            <button className="action-primary w-full sm:w-auto">تطبيق الفلاتر</button>
-          </div>
-        </form>
-      </Card>
+      <section className="rounded-lg border border-line/80 bg-white/95 p-4 shadow-soft sm:p-5">
+        <div className="mb-5 border-b border-line/70 pb-3">
+          <h3 className="text-xl font-bold text-ink">الفلاتر</h3>
+          <p className="mt-1 text-sm text-muted">غيّر أي فلتر وسيتم تحديث المصاريف مباشرة.</p>
+        </div>
+        <ExpenseFilterForm
+          from={from ? formatDateInput(from) : ""}
+          to={to ? formatDateInput(to) : ""}
+          category={category || ""}
+          currencyCode={currencyCode || ""}
+        />
+      </section>
 
       <Card title="قائمة المصاريف">
         {expenses.length === 0 ? (
