@@ -14,6 +14,9 @@ import {
   deriveTransferStatus,
   getCostRateFromUsdRates,
   getOpenAmountInfo,
+  getDisplayRateFromInternal,
+  getNormalizedRateDirection,
+  normalizeRateByMagnitude,
 } from "@/lib/transfer-calculations";
 import {
   currencyLabels,
@@ -253,11 +256,21 @@ export function TransferTransactionForm({
         return null;
       }
 
-      return costRatePreview.minus(toDecimal(values.customerRate)).toDecimalPlaces(8);
+      const direction = getNormalizedRateDirection(values.receivedCurrency, values.deliveredCurrency, values.usdRates);
+      const displayCostRate = getDisplayRateFromInternal(costRatePreview, values.deliveredCurrency, direction);
+      const displayCustomerRate = normalizeRateByMagnitude(values.customerRate);
+
+      return displayCostRate.minus(displayCustomerRate).toDecimalPlaces(8);
     } catch {
       return null;
     }
-  }, [costRatePreview, values.customerRate]);
+  }, [
+    costRatePreview,
+    values.customerRate,
+    values.deliveredCurrency,
+    values.receivedCurrency,
+    values.usdRates,
+  ]);
 
   const preview = useMemo(() => {
     try {
@@ -280,8 +293,34 @@ export function TransferTransactionForm({
   }, [costRatePreview, values]);
 
   const status = deriveTransferStatus(values.receivedStatus, values.deliveredStatus);
-  const rateBaseLabel = currencyLabels[values.deliveredCurrency];
-  const rateQuoteLabel = currencyLabels[values.receivedCurrency];
+  const rateDirection = useMemo(
+    () => getNormalizedRateDirection(values.receivedCurrency, values.deliveredCurrency, values.usdRates),
+    [values.deliveredCurrency, values.receivedCurrency, values.usdRates],
+  );
+  const rateBaseLabel = currencyLabels[rateDirection.rateBaseCurrency];
+  const rateQuoteLabel = currencyLabels[rateDirection.rateQuoteCurrency];
+  const displayCustomerRate = useMemo(() => {
+    if (!values.customerRate) {
+      return "";
+    }
+
+    try {
+      return formatNumber(normalizeRateByMagnitude(values.customerRate), "rate");
+    } catch {
+      return values.customerRate;
+    }
+  }, [values.customerRate]);
+  const displayCostRate = useMemo(() => {
+    if (!costRatePreview) {
+      return null;
+    }
+
+    try {
+      return getDisplayRateFromInternal(costRatePreview, values.deliveredCurrency, rateDirection);
+    } catch {
+      return null;
+    }
+  }, [costRatePreview, rateDirection, values.deliveredCurrency]);
   const openInfo =
     preview && status === "OPEN"
       ? getOpenAmountInfo({
@@ -515,7 +554,7 @@ export function TransferTransactionForm({
           </div>
         </Section>
 
-        <Section title="الأسعار" hint="سعر العميل دائمًا يعني: كل 1 من عملة التسليم يساوي كم من عملة الاستلام.">
+        <Section title="الأسعار" hint="سعر العميل دائمًا = الكبير ÷ الصغير حسب أسعار الدولار.">
           <div className="grid gap-4">
             <div className="rounded-lg border border-line/80 bg-paper/80 p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -550,14 +589,14 @@ export function TransferTransactionForm({
                 <input
                   inputMode="decimal"
                   dir="ltr"
-                  value={costRatePreview ? formatNumber(costRatePreview, "rate") : ""}
+                  value={displayCostRate ? formatNumber(displayCostRate, "rate") : ""}
                   readOnly
                   className={numericInputClassName("bg-paper/80 text-muted")}
                   placeholder="يحسب تلقائيًا"
                 />
-                {costRatePreview ? (
+                {displayCostRate ? (
                   <span className="mt-2 block rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-semibold text-ink">
-                    سعر التكلفة: كل 1 {rateBaseLabel} = {formatNumber(costRatePreview, "rate")} {rateQuoteLabel}
+                    سعر التكلفة: كل 1 {rateBaseLabel} = {formatNumber(displayCostRate, "rate")} {rateQuoteLabel}
                   </span>
                 ) : null}
               </Field>
@@ -568,11 +607,20 @@ export function TransferTransactionForm({
                   dir="ltr"
                   value={values.customerRate}
                   onChange={(event) => updateNumberValue("customerRate", event.target.value)}
+                  onBlur={() => {
+                    if (!values.customerRate) return;
+                    try {
+                      const normalized = normalizeRateByMagnitude(values.customerRate);
+                      updateValue("customerRate", normalized.toString());
+                    } catch {
+                      return;
+                    }
+                  }}
                   className={numericInputClassName()}
                   placeholder="0"
                 />
                 <span className="mt-2 block rounded-lg border border-line/70 bg-paper/80 px-3 py-2 text-xs text-muted">
-                  كل 1 {rateBaseLabel} = {values.customerRate || "0"} {rateQuoteLabel}
+                  كل 1 {rateBaseLabel} = {displayCustomerRate || "0"} {rateQuoteLabel}
                 </span>
               </Field>
             </div>
@@ -750,7 +798,7 @@ export function TransferTransactionForm({
                 label="سعر العميل"
                 value={
                   <span>
-                    كل 1 {rateBaseLabel} = <span dir="ltr">{formatNumber(values.customerRate, "rate")}</span> {rateQuoteLabel}
+                    كل 1 {rateBaseLabel} = <span dir="ltr">{displayCustomerRate || "0"}</span> {rateQuoteLabel}
                   </span>
                 }
               />

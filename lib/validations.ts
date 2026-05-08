@@ -174,11 +174,11 @@ export const transferTransactionSchema = z
       }
     }
 
-    if (new Decimal(value.customerRate).lte(0)) {
+    if (new Decimal(value.customerRate).lt(1)) {
       context.addIssue({
         code: "custom",
         path: ["customerRate"],
-        message: "السعر الفعلي يجب أن يكون أكبر من صفر",
+        message: "سعر العميل يجب أن يكون أكبر أو يساوي 1 (الكبير ÷ الصغير)",
       });
     }
 

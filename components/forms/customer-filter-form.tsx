@@ -21,6 +21,7 @@ export function CustomerFilterForm({ q, sort, balance }: CustomerFilterFormProps
   const updateParams = useCallback((updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("country");
+    params.delete("page");
 
     for (const [key, value] of Object.entries(updates)) {
       if (value && value !== "all" && value !== "recent") {

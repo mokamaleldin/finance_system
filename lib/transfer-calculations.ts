@@ -26,6 +26,7 @@ export type TransferCalculationInput = {
 export type TransferCalculationResult = {
   costRate: Decimal;
   theoreticalRate: Decimal;
+  customerRate: Decimal;
   rateDifference: Decimal;
   rateBaseCurrency: CurrencyCode;
   rateQuoteCurrency: CurrencyCode;
@@ -56,6 +57,67 @@ export function getRateDirection(
     rateBaseCurrency: deliveredCurrency,
     rateQuoteCurrency: receivedCurrency,
   };
+}
+
+export function getNormalizedRateDirection(
+  receivedCurrency: CurrencyCode,
+  deliveredCurrency: CurrencyCode,
+  usdRates?: UsdRateMap,
+) {
+  const receivedRate = getUsdReferenceRate(receivedCurrency, usdRates);
+  const deliveredRate = getUsdReferenceRate(deliveredCurrency, usdRates);
+
+  if (receivedRate && deliveredRate && !receivedRate.equals(deliveredRate)) {
+    return receivedRate.gt(deliveredRate)
+      ? {
+          rateBaseCurrency: deliveredCurrency,
+          rateQuoteCurrency: receivedCurrency,
+        }
+      : {
+          rateBaseCurrency: receivedCurrency,
+          rateQuoteCurrency: deliveredCurrency,
+        };
+  }
+
+  return getRateDirection(receivedCurrency, deliveredCurrency);
+}
+
+export function normalizeRateByMagnitude(value: DecimalInput) {
+  const rate = toDecimal(value);
+
+  if (rate.gt(0) && rate.lt(1)) {
+    return new Decimal(1).dividedBy(rate).toDecimalPlaces(8);
+  }
+
+  return rate.toDecimalPlaces(8);
+}
+
+export function getDisplayRateFromInternal(
+  rate: DecimalInput,
+  deliveredCurrency: CurrencyCode,
+  direction: ReturnType<typeof getRateDirection>,
+) {
+  const internalRate = toDecimal(rate);
+
+  if (direction.rateBaseCurrency === deliveredCurrency || internalRate.isZero()) {
+    return internalRate.toDecimalPlaces(8);
+  }
+
+  return new Decimal(1).dividedBy(internalRate).toDecimalPlaces(8);
+}
+
+function getInternalRateFromDisplay(
+  rate: DecimalInput,
+  deliveredCurrency: CurrencyCode,
+  direction: ReturnType<typeof getRateDirection>,
+) {
+  const displayRate = normalizeRateByMagnitude(rate);
+
+  if (direction.rateBaseCurrency === deliveredCurrency || displayRate.isZero()) {
+    return displayRate.toDecimalPlaces(8);
+  }
+
+  return new Decimal(1).dividedBy(displayRate).toDecimalPlaces(8);
 }
 
 function buildRateMap(input: {
@@ -139,22 +201,26 @@ function resolveCostRate(input: TransferCalculationInput) {
 
 export function calculateTransfer(input: TransferCalculationInput): TransferCalculationResult {
   const receivedAmount = toDecimal(input.receivedAmount);
-  const customerRate = toDecimal(input.customerRate);
-  const costRate = resolveCostRate(input);
-  const direction = getRateDirection(input.receivedCurrency, input.deliveredCurrency);
+  const rateMap = buildRateMap(input);
+  const internalCostRate = resolveCostRate(input);
+  const direction = getNormalizedRateDirection(input.receivedCurrency, input.deliveredCurrency, rateMap);
+  const displayCostRate = getDisplayRateFromInternal(internalCostRate, input.deliveredCurrency, direction);
+  const displayCustomerRate = normalizeRateByMagnitude(input.customerRate);
+  const internalCustomerRate = getInternalRateFromDisplay(displayCustomerRate, input.deliveredCurrency, direction);
 
   const deliveredAmount =
     input.deliveredAmountOverride !== undefined &&
     input.deliveredAmountOverride !== null &&
     input.deliveredAmountOverride !== ""
       ? toDecimal(input.deliveredAmountOverride).toDecimalPlaces(4)
-      : receivedAmount.dividedBy(customerRate).toDecimalPlaces(4);
-  const costValue = deliveredAmount.times(costRate);
+      : receivedAmount.dividedBy(internalCustomerRate).toDecimalPlaces(4);
+  const costValue = deliveredAmount.times(internalCostRate);
 
   return {
-    costRate,
-    theoreticalRate: costRate,
-    rateDifference: costRate.minus(customerRate).toDecimalPlaces(8),
+    costRate: displayCostRate,
+    theoreticalRate: displayCostRate,
+    customerRate: displayCustomerRate,
+    rateDifference: displayCostRate.minus(displayCustomerRate).toDecimalPlaces(8),
     rateBaseCurrency: direction.rateBaseCurrency,
     rateQuoteCurrency: direction.rateQuoteCurrency,
     deliveredAmount,

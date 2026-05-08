@@ -2,11 +2,11 @@ import {
   CalendarDays,
   Eye,
   FileText,
-  MoreVertical,
   Phone,
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
+import { CustomerCardMenu } from "@/components/forms/customer-card-menu";
 import { CustomerCreateModal } from "@/components/forms/customer-create-modal";
 import { CustomerFilterForm } from "@/components/forms/customer-filter-form";
 import { StatCard } from "@/components/ui/card";
@@ -45,11 +45,31 @@ function latestActivityDate(transactions: { date: Date | string }[]) {
   return formatDate(latest);
 }
 
+function getPageHref(params: Record<string, string | string[] | undefined>, page: number) {
+  const nextParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "page") continue;
+    if (typeof value === "string" && value) {
+      nextParams.set(key, value);
+    }
+  }
+
+  if (page > 1) {
+    nextParams.set("page", String(page));
+  }
+
+  const query = nextParams.toString();
+  return query ? `/dashboard/customers?${query}` : "/dashboard/customers";
+}
+
 export default async function CustomersPage({ searchParams }: CustomersPageProps) {
   const params = (await searchParams) ?? {};
   const q = typeof params.q === "string" ? params.q.trim() : "";
   const sort = typeof params.sort === "string" ? params.sort : "recent";
   const balance = typeof params.balance === "string" ? params.balance : "all";
+  const currentPageParam = typeof params.page === "string" ? Number.parseInt(params.page, 10) : 1;
+  const currentPage = Number.isFinite(currentPageParam) && currentPageParam > 0 ? currentPageParam : 1;
   const baseRows = await getCustomerListWithTransferSummary(q);
   const rows = baseRows
     .filter(({ open }) => {
@@ -74,6 +94,10 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const activeCustomers = rows.filter(({ operationsCount }) => operationsCount > 0).length;
   const customersWithOwe = rows.filter(({ open }) => hasAnyAmount(open.oweCustomer)).length;
   const customersOweUs = rows.filter(({ open }) => hasAnyAmount(open.customerOwesUs)).length;
+  const pageSize = 9;
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedRows = rows.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
     <div className="grid gap-6">
@@ -109,8 +133,9 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
         {rows.length === 0 ? (
           <EmptyState title="لا يوجد عملاء أو تجار" />
         ) : (
+          <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {rows.map(({ customer, operationsCount, open }) => {
+            {pagedRows.map(({ customer, operationsCount, open }) => {
               const hasOpenOwe = hasAnyAmount(open.oweCustomer);
               const hasCustomerOwe = hasAnyAmount(open.customerOwesUs);
               const note = customer.notes?.trim();
@@ -118,18 +143,12 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
               return (
                 <article
                   key={customer.id}
-                  className={`overflow-hidden rounded-lg border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft ${
+                  className={`relative overflow-visible rounded-lg border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft ${
                     hasOpenOwe || hasCustomerOwe ? "border-olive/25" : "border-line/80"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3 p-4">
-                    <button
-                      type="button"
-                      aria-label="خيارات"
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-paper"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
+                    <CustomerCardMenu customerId={customer.id} />
                     <div className="min-w-0 flex-1 text-center">
                       <h4 className="truncate text-base font-bold text-ink">{customer.name}</h4>
                       <p className="mt-1 flex items-center justify-center gap-1 text-sm text-muted">
@@ -191,6 +210,45 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
               );
             })}
           </div>
+          <div className="mt-5 flex flex-col items-center justify-between gap-3 border-t border-line/70 pt-4 sm:flex-row">
+            <p className="text-sm text-muted">
+              عرض {(safePage - 1) * pageSize + 1} - {Math.min(safePage * pageSize, rows.length)} من {rows.length} عميل
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Link
+                href={getPageHref(params, Math.max(1, safePage - 1))}
+                aria-disabled={safePage === 1}
+                className={`rounded-lg border border-line px-3 py-2 text-sm font-semibold shadow-sm ${
+                  safePage === 1 ? "pointer-events-none bg-paper text-muted" : "bg-white text-ink hover:bg-mint"
+                }`}
+              >
+                السابق
+              </Link>
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                <Link
+                  key={page}
+                  href={getPageHref(params, page)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-bold shadow-sm ${
+                    safePage === page
+                      ? "border-ink bg-ink text-white"
+                      : "border-line bg-white text-ink hover:bg-mint"
+                  }`}
+                >
+                  {page}
+                </Link>
+              ))}
+              <Link
+                href={getPageHref(params, Math.min(totalPages, safePage + 1))}
+                aria-disabled={safePage === totalPages}
+                className={`rounded-lg border border-line px-3 py-2 text-sm font-semibold shadow-sm ${
+                  safePage === totalPages ? "pointer-events-none bg-paper text-muted" : "bg-white text-ink hover:bg-mint"
+                }`}
+              >
+                التالي
+              </Link>
+            </div>
+          </div>
+          </>
         )}
       </section>
     </div>
