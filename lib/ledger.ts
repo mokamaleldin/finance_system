@@ -11,6 +11,7 @@ import {
   toDecimal,
   toMoneyString,
 } from "@/lib/calculations";
+import { customerSelect } from "@/lib/customer-select";
 import { getDateRange } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -61,6 +62,7 @@ export async function getCustomerBalances(customerId: string, to?: Date) {
 export async function getCustomerStatement(customerId: string, filters: StatementFilters = {}) {
   const customer = await prisma.customer.findUniqueOrThrow({
     where: { id: customerId },
+    select: customerSelect,
   });
 
   const periodWhere = buildMovementWhere({
@@ -233,7 +235,7 @@ export async function getDailyReport(date: Date) {
     prisma.financialMovement.findMany({
       where: { date: { gte: start, lte: end } },
       include: {
-        customer: true,
+        customer: { select: customerSelect },
         transactionGroup: true,
       },
       orderBy: [{ date: "asc" }, { createdAt: "asc" }],
@@ -247,7 +249,7 @@ export async function getDailyReport(date: Date) {
         ],
       },
       include: {
-        customer: true,
+        customer: { select: customerSelect },
       },
     }),
   ]);

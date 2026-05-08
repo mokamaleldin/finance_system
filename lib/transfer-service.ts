@@ -7,6 +7,7 @@ import {
 } from "@/lib/commission";
 import { calculateTransfer, deriveTransferStatus, getRemainingSide } from "@/lib/transfer-calculations";
 import { emptyCurrencyTotals, toDecimal, toMoneyString } from "@/lib/calculations";
+import { customerSelect } from "@/lib/customer-select";
 import { formatDateInput, getDateRange } from "@/lib/format";
 import {
   currencyValues,
@@ -23,9 +24,48 @@ import type { z } from "zod";
 type TransferInput = z.output<typeof transferTransactionSchema>;
 
 const transactionInclude = {
-  customer: true,
+  customer: { select: customerSelect },
   commission: true,
 } satisfies Prisma.TransferTransactionInclude;
+
+// Safe select that purposely omits the `customer` relation so we don't
+// accidentally select `Customer.customerType` before the DB migration
+// has been applied. Use this in read paths that must be resilient.
+const transactionSelect = {
+  id: true,
+  date: true,
+  customerId: true,
+  customerNameSnapshot: true,
+  customerPhoneSnapshot: true,
+  type: true,
+  receiveLocation: true,
+  deliverLocation: true,
+  receivedCurrency: true,
+  receivedAmount: true,
+  deliveredCurrency: true,
+  deliveredAmount: true,
+  usdRates: true,
+  usdToEgp: true,
+  usdToTry: true,
+  rateBaseCurrency: true,
+  rateQuoteCurrency: true,
+  costRate: true,
+  theoreticalRate: true,
+  customerRate: true,
+  rateDifference: true,
+  profitCurrency: true,
+  profitAmount: true,
+  receivedStatus: true,
+  deliveredStatus: true,
+  status: true,
+  isDeliveredAmountManual: true,
+  notes: true,
+  cancelledAt: true,
+  cancellationReason: true,
+  createdAt: true,
+  updatedAt: true,
+  commission: true,
+} satisfies Prisma.TransferTransactionSelect;
 
 export type TransferWithCustomer = Prisma.TransferTransactionGetPayload<{
   include: typeof transactionInclude;
@@ -88,6 +128,7 @@ async function resolveCustomer(input: TransferInput, db: PrismaWriteClient = pri
   if (input.customerId) {
     const customer = await db.customer.findUniqueOrThrow({
       where: { id: input.customerId },
+      select: customerSelect,
     });
 
     return {
@@ -106,6 +147,7 @@ async function resolveCustomer(input: TransferInput, db: PrismaWriteClient = pri
         phone: nullableString(input.phone),
         notes: "تم إنشاؤه من صفحة معاملة جديدة",
       },
+      select: customerSelect,
     });
 
     return {
@@ -363,7 +405,7 @@ export function transferWhereFromFilters(filters: {
 export async function getTransferTransactions(filters: Parameters<typeof transferWhereFromFilters>[0] = {}) {
   return prisma.transferTransaction.findMany({
     where: transferWhereFromFilters(filters),
-    include: transactionInclude,
+    select: transactionSelect,
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     take: 300,
   });
@@ -376,7 +418,7 @@ export async function getTodayDashboard(today = new Date()) {
       date: { gte: start, lte: end },
       status: { not: "CANCELLED" },
     },
-    include: transactionInclude,
+    select: transactionSelect,
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
 
@@ -518,7 +560,7 @@ export function calculateOpenSummary(transactions: TransferSummaryTransaction[])
 export async function getOpenTransfers() {
   const transactions = await prisma.transferTransaction.findMany({
     where: { status: "OPEN" },
-    include: transactionInclude,
+    select: transactionSelect,
     orderBy: [{ date: "asc" }, { createdAt: "asc" }],
   });
 
@@ -529,13 +571,16 @@ export async function getOpenTransfers() {
 }
 
 export async function getCustomerTransferSummary(customerId: string) {
-  const customer = await prisma.customer.findUniqueOrThrow({ where: { id: customerId } });
+  const customer = await prisma.customer.findUniqueOrThrow({
+    where: { id: customerId },
+    select: customerSelect,
+  });
   const transactions = await prisma.transferTransaction.findMany({
     where: {
       customerId,
       status: { not: "CANCELLED" },
     },
-    include: transactionInclude,
+    select: transactionSelect,
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
   });
   const receivedTotals = emptyCurrencyTotals();
@@ -571,9 +616,11 @@ export async function getCustomerListWithTransferSummary(search?: string) {
           ],
         }
       : undefined,
-    include: {
+    select: {
+      ...customerSelect,
       transferTransactions: {
         where: { status: { not: "CANCELLED" } },
+        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       },
     },
     orderBy: { createdAt: "desc" },

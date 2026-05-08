@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth, serverErrorResponse, validationErrorResponse } from "@/lib/api";
+import { customerSelect } from "@/lib/customer-select";
 import { prisma } from "@/lib/prisma";
 import { customerSchema, nullableString } from "@/lib/validations";
 
@@ -25,6 +26,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         country: nullableString(parsed.data.country),
         notes: nullableString(parsed.data.notes),
       },
+      select: customerSelect,
     });
 
     return NextResponse.json({ customer });
@@ -40,7 +42,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
 
   try {
-    await prisma.customer.delete({ where: { id } });
+    await prisma.customer.delete({ where: { id }, select: { id: true } });
     return NextResponse.json({ ok: true });
   } catch (error) {
     return serverErrorResponse(error);

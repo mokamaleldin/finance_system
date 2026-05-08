@@ -5,6 +5,7 @@ import { TransactionsFilterForm } from "@/components/forms/transactions-filter-f
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { customerOptionSelect } from "@/lib/customer-select";
 import { formatDate, formatDecimal, formatMoney, parseOptionalDateParam } from "@/lib/format";
 import {
   currencyValues,
@@ -41,7 +42,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const toValue = typeof params.to === "string" ? params.to : "";
 
   const [customers, transactions] = await Promise.all([
-    prisma.customer.findMany({ orderBy: { name: "asc" } }),
+    prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect }),
     getTransferTransactions({
       from,
       to,

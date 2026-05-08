@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { CancelTransactionButton, CompleteStepButton } from "@/components/forms/transaction-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { customerSelect } from "@/lib/customer-select";
 import { formatDate, formatDecimal, formatMoney } from "@/lib/format";
 import {
   currencyLabels,
@@ -25,7 +26,7 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
   const { id } = await params;
   const transaction = await prisma.transferTransaction.findUnique({
     where: { id },
-    include: { customer: true, commission: true },
+    include: { customer: { select: customerSelect }, commission: true },
   });
 
   if (!transaction) {

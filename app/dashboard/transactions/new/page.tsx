@@ -1,8 +1,9 @@
 import { TransferTransactionForm } from "@/components/forms/transfer-transaction-form";
+import { customerOptionSelect } from "@/lib/customer-select";
 import { prisma } from "@/lib/prisma";
 
 export default async function NewTransactionPage() {
-  const customers = await prisma.customer.findMany({ orderBy: { name: "asc" } });
+  const customers = await prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect });
 
   return (
     <div className="grid gap-6">

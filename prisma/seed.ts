@@ -3,6 +3,7 @@ import {
   calculateCrossRate,
   toMoneyString,
 } from "../lib/calculations";
+import { customerSelect } from "../lib/customer-select";
 import { createTransferTransaction } from "../lib/transfer-service";
 import { prisma } from "../lib/prisma";
 
@@ -37,6 +38,7 @@ async function main() {
         country: "مصر",
         notes: "عميل تحويلات متكرر بين القاهرة وإسطنبول",
       },
+      select: customerSelect,
     }),
     prisma.customer.create({
       data: {
@@ -44,6 +46,7 @@ async function main() {
         phone: "+905551234567",
         country: "تركيا",
       },
+      select: customerSelect,
     }),
     prisma.customer.create({
       data: {
@@ -51,6 +54,7 @@ async function main() {
         phone: "+201222333444",
         country: "مصر",
       },
+      select: customerSelect,
     }),
   ]);
 

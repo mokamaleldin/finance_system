@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { TransferTransactionForm } from "@/components/forms/transfer-transaction-form";
+import { customerOptionSelect } from "@/lib/customer-select";
 import { formatDateInput } from "@/lib/format";
 import type { CurrencyCode } from "@/lib/options";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +13,7 @@ export default async function EditTransactionPage({ params }: EditTransactionPag
   const { id } = await params;
   const [transaction, customers] = await Promise.all([
     prisma.transferTransaction.findUnique({ where: { id }, include: { commission: true } }),
-    prisma.customer.findMany({ orderBy: { name: "asc" } }),
+    prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect }),
   ]);
 
   if (!transaction) {

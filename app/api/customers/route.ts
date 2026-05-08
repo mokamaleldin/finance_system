@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiAuth, serverErrorResponse, validationErrorResponse } from "@/lib/api";
+import { customerSelect } from "@/lib/customer-select";
 import { prisma } from "@/lib/prisma";
 import { customerSchema, nullableString } from "@/lib/validations";
 
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
         }
       : undefined,
     orderBy: { createdAt: "desc" },
+    select: customerSelect,
     take: 50,
   });
 
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
         country: nullableString(parsed.data.country),
         notes: nullableString(parsed.data.notes),
       },
+      select: customerSelect,
     });
 
     return NextResponse.json({ customer }, { status: 201 });

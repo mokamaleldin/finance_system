@@ -1,5 +1,6 @@
 import Decimal from "decimal.js";
 import { emptyCurrencyTotals } from "@/lib/calculations";
+import { customerSelect } from "@/lib/customer-select";
 import { getDateRange } from "@/lib/format";
 import { currencyValues, type CurrencyCode } from "@/lib/options";
 import { prisma } from "@/lib/prisma";
@@ -94,7 +95,7 @@ export async function getReportByDateRange(start: Date, end: Date) {
         date: { gte: start, lte: end },
         status: { not: "CANCELLED" },
       },
-      include: { customer: true, commission: true },
+      include: { customer: { select: customerSelect }, commission: true },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     }),
     prisma.expense.findMany({

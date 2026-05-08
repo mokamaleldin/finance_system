@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { MovementForm } from "@/components/forms/movement-form";
 import { Card } from "@/components/ui/card";
+import { customerOptionSelect } from "@/lib/customer-select";
 import { formatDateInput } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -12,7 +13,7 @@ export default async function EditMovementPage({ params }: EditMovementPageProps
   const { id } = await params;
   const [movement, customers, transactionGroups] = await Promise.all([
     prisma.financialMovement.findUnique({ where: { id } }),
-    prisma.customer.findMany({ orderBy: { name: "asc" } }),
+    prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect }),
     prisma.transactionGroup.findMany({ orderBy: { createdAt: "desc" } }),
   ]);
 
