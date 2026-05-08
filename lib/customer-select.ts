@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 export const customerSelect = {
   id: true,
   name: true,
+  kind: true,
   phone: true,
   country: true,
   notes: true,
@@ -13,5 +14,6 @@ export const customerSelect = {
 export const customerOptionSelect = {
   id: true,
   name: true,
+  kind: true,
   phone: true,
 } satisfies Prisma.CustomerSelect;

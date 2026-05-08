@@ -76,9 +76,15 @@ enum CommissionBase {
   PROFIT
 }
 
+enum CustomerKind {
+  CUSTOMER
+  TRADER
+}
+
 model Customer {
   id                   String                @id @default(cuid())
   name                 String
+  kind                 CustomerKind          @default(CUSTOMER)
   phone                String?
   country              String?
   notes                String?

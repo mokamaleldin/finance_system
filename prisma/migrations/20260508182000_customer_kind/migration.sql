@@ -1,0 +1,4 @@
+CREATE TYPE "CustomerKind" AS ENUM ('CUSTOMER', 'TRADER');
+
+ALTER TABLE "Customer"
+ADD COLUMN "kind" "CustomerKind" NOT NULL DEFAULT 'CUSTOMER';

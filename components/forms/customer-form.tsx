@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { customerKindLabels, customerKindValues } from "@/lib/options";
 import { customerSchema } from "@/lib/validations";
 
 type CustomerFormValues = z.input<typeof customerSchema>;
@@ -30,6 +31,7 @@ export function CustomerForm({ customerId, initialValues, onSavedPath, onSaved }
     resolver: zodResolver(customerSchema),
     defaultValues: {
       name: initialValues?.name ?? "",
+      kind: initialValues?.kind ?? "CUSTOMER",
       phone: initialValues?.phone ?? "",
       country: initialValues?.country ?? "",
       notes: initialValues?.notes ?? "",
@@ -66,6 +68,20 @@ export function CustomerForm({ customerId, initialValues, onSavedPath, onSaved }
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
       <div className="grid gap-4 md:grid-cols-2">
+        <div className="md:col-span-2">
+          <span className="text-sm font-semibold text-ink">نوع الحساب</span>
+          <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg border border-line bg-paper/60 p-1">
+            {customerKindValues.map((kind) => (
+              <label key={kind} className="relative cursor-pointer">
+                <input type="radio" value={kind} className="peer sr-only" {...register("kind")} />
+                <span className="flex min-h-11 items-center justify-center rounded-md border border-transparent px-3 py-2 text-sm font-bold text-muted transition peer-checked:border-olive/30 peer-checked:bg-white peer-checked:text-olive peer-checked:shadow-sm hover:bg-white/70">
+                  {customerKindLabels[kind]}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
         <div>
           <label className="text-sm font-semibold text-ink">اسم العميل</label>
           <input className="mt-2 min-h-12 w-full rounded-lg border border-line px-3 py-2 outline-none focus:border-olive" {...register("name")} />

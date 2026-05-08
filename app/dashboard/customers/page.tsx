@@ -13,6 +13,7 @@ import { StatCard } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { currencies, toDecimal } from "@/lib/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
+import { customerKindLabels } from "@/lib/options";
 import { getCustomerListWithTransferSummary } from "@/lib/transfer-service";
 
 type CustomersPageProps = {
@@ -110,7 +111,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="عدد العملاء" value={String(rows.length)} hint="جميع العملاء في النتائج الحالية" />
+        <StatCard title="عدد العملاء والتجار" value={String(rows.length)} hint="جميع الحسابات في النتائج الحالية" />
         <StatCard title="نشطون" value={String(activeCustomers)} hint="لديهم عمليات مسجلة" />
         <StatCard title="علينا العملاء" value={String(customersWithOwe)} hint="مبالغ مفتوحة علينا لهم" />
         <StatCard title="لنا عند العملاء" value={String(customersOweUs)} hint="مبالغ مفتوحة لنا عندهم" />
@@ -127,7 +128,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
             <p className="mt-1 text-sm text-muted">عرض سريع لكل عميل مع أهم الأرقام والإجراءات.</p>
           </div>
           <span className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold text-muted">
-            {rows.length} عميل
+            {rows.length} حساب
           </span>
         </div>
         {rows.length === 0 ? (
@@ -151,6 +152,9 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                     <CustomerCardMenu customerId={customer.id} />
                     <div className="min-w-0 flex-1 text-center">
                       <h4 className="truncate text-base font-bold text-ink">{customer.name}</h4>
+                      <span className="mt-1 inline-flex rounded-full border border-olive/15 bg-mint px-2.5 py-1 text-xs font-bold text-olive">
+                        {customerKindLabels[customer.kind]}
+                      </span>
                       <p className="mt-1 flex items-center justify-center gap-1 text-sm text-muted">
                         <Phone className="h-3.5 w-3.5" />
                         <span dir="ltr">{customer.phone || "بدون هاتف"}</span>

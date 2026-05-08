@@ -34,6 +34,7 @@ async function main() {
     prisma.customer.create({
       data: {
         name: "رفعت عبد الرحمن",
+        kind: "CUSTOMER",
         phone: "+201001112233",
         country: "مصر",
         notes: "عميل تحويلات متكرر بين القاهرة وإسطنبول",
@@ -43,6 +44,7 @@ async function main() {
     prisma.customer.create({
       data: {
         name: "أحمد كمال",
+        kind: "TRADER",
         phone: "+905551234567",
         country: "تركيا",
       },
@@ -51,6 +53,7 @@ async function main() {
     prisma.customer.create({
       data: {
         name: "يوسف المصري",
+        kind: "CUSTOMER",
         phone: "+201222333444",
         country: "مصر",
       },

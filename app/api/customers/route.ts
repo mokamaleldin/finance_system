@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     const customer = await prisma.customer.create({
       data: {
         name: parsed.data.name,
+        kind: parsed.data.kind,
         phone: nullableString(parsed.data.phone),
         country: nullableString(parsed.data.country),
         notes: nullableString(parsed.data.notes),

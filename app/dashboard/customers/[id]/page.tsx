@@ -9,6 +9,7 @@ import { currencies } from "@/lib/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import {
   currencyLabels,
+  customerKindLabels,
   deliveredStatusLabels,
   receivedStatusLabels,
   transferStatusLabels,
@@ -59,6 +60,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
       <div className="grid gap-4 lg:grid-cols-3">
         <Card title="بيانات العميل">
           <dl className="grid gap-3 text-sm">
+            <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">نوع الحساب</dt><dd className="font-semibold">{customerKindLabels[summary.customer.kind]}</dd></div>
             <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">الهاتف</dt><dd className="font-semibold">{summary.customer.phone || "-"}</dd></div>
             <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">ملاحظات</dt><dd className="font-semibold">{summary.customer.notes || "-"}</dd></div>
           </dl>
@@ -68,6 +70,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
             customerId={summary.customer.id}
             initialValues={{
               name: summary.customer.name,
+              kind: summary.customer.kind,
               phone: summary.customer.phone || "",
               country: summary.customer.country || "",
               notes: summary.customer.notes || "",

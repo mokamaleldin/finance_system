@@ -4,6 +4,7 @@ import {
   currencyValues,
   commissionBaseValues,
   commissionTypeValues,
+  customerKindValues,
   deliveredStatusValues,
   expenseCategoryValues,
   movementTypeValues,
@@ -43,6 +44,7 @@ export const loginSchema = z.object({
 
 export const customerSchema = z.object({
   name: z.string().trim().min(2, "اسم العميل مطلوب"),
+  kind: z.enum(customerKindValues).optional().default("CUSTOMER"),
   phone: z.string().trim().optional().default(""),
   country: z.string().trim().optional().default(""),
   notes: z.string().trim().optional().default(""),

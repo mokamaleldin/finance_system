@@ -9,6 +9,7 @@ export const transferStatusValues = ["OPEN", "COMPLETED", "CANCELLED"] as const;
 export const expenseCategoryValues = ["RENT", "HOSPITALITY", "TRANSPORTATION", "INTERNET", "OPERATIONS", "OTHER"] as const;
 export const commissionTypeValues = ["FIXED", "PERCENTAGE"] as const;
 export const commissionBaseValues = ["RECEIVED_AMOUNT", "PROFIT"] as const;
+export const customerKindValues = ["CUSTOMER", "TRADER"] as const;
 
 export type CurrencyCode = (typeof currencyValues)[number];
 export type MovementTypeCode = (typeof movementTypeValues)[number];
@@ -20,6 +21,7 @@ export type TransferStatusCode = (typeof transferStatusValues)[number];
 export type ExpenseCategoryCode = (typeof expenseCategoryValues)[number];
 export type CommissionTypeCode = (typeof commissionTypeValues)[number];
 export type CommissionBaseCode = (typeof commissionBaseValues)[number];
+export type CustomerKindCode = (typeof customerKindValues)[number];
 
 export const currencyLabels: Record<CurrencyCode, string> = {
   EGP: "جنيه مصري",
@@ -81,4 +83,9 @@ export const commissionTypeLabels: Record<CommissionTypeCode, string> = {
 export const commissionBaseLabels: Record<CommissionBaseCode, string> = {
   RECEIVED_AMOUNT: "المبلغ المستلم",
   PROFIT: "ربح العملية",
+};
+
+export const customerKindLabels: Record<CustomerKindCode, string> = {
+  CUSTOMER: "عميل",
+  TRADER: "تاجر",
 };

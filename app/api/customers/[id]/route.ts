@@ -22,6 +22,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       where: { id },
       data: {
         name: parsed.data.name,
+        kind: parsed.data.kind,
         phone: nullableString(parsed.data.phone),
         country: nullableString(parsed.data.country),
         notes: nullableString(parsed.data.notes),
