@@ -2,6 +2,7 @@ import Decimal from "decimal.js";
 import { z } from "zod";
 import {
   currencyValues,
+  capitalMovementTypeValues,
   commissionBaseValues,
   commissionTypeValues,
   customerKindValues,
@@ -220,6 +221,25 @@ export const expenseSchema = z
     description: z.string().trim().min(2, "الوصف مطلوب"),
     amount: decimalString("المبلغ"),
     currencyCode: z.enum(currencyValues),
+    notes: z.string().trim().optional().default(""),
+  })
+  .superRefine((value, context) => {
+    if (new Decimal(value.amount).lte(0)) {
+      context.addIssue({
+        code: "custom",
+        path: ["amount"],
+        message: "المبلغ يجب أن يكون أكبر من صفر",
+      });
+    }
+  });
+
+export const capitalMovementSchema = z
+  .object({
+    date: z.coerce.date({ message: "التاريخ غير صحيح" }),
+    type: z.enum(capitalMovementTypeValues),
+    currencyCode: z.enum(currencyValues),
+    amount: decimalString("المبلغ"),
+    description: z.string().trim().min(2, "الوصف مطلوب"),
     notes: z.string().trim().optional().default(""),
   })
   .superRefine((value, context) => {

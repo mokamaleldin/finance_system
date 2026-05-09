@@ -62,6 +62,11 @@ enum TransferExecutionType {
   DELIVERED
 }
 
+enum CapitalMovementType {
+  INFLOW
+  OUTFLOW
+}
+
 enum ExpenseCategory {
   RENT
   HOSPITALITY
@@ -181,6 +186,22 @@ model Expense {
 
   @@index([date])
   @@index([category])
+  @@index([currencyCode])
+}
+
+model CapitalMovement {
+  id           String              @id @default(cuid())
+  date         DateTime
+  type         CapitalMovementType
+  currencyCode Currency
+  amount       Decimal             @db.Decimal(18, 4)
+  description  String
+  notes        String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([date])
+  @@index([type])
   @@index([currencyCode])
 }
 

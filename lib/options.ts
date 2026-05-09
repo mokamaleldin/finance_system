@@ -7,6 +7,7 @@ export const receivedStatusValues = ["RECEIVED", "NOT_RECEIVED"] as const;
 export const deliveredStatusValues = ["DELIVERED", "NOT_DELIVERED"] as const;
 export const transferStatusValues = ["OPEN", "COMPLETED", "CANCELLED"] as const;
 export const transferExecutionTypeValues = ["RECEIVED", "DELIVERED"] as const;
+export const capitalMovementTypeValues = ["INFLOW", "OUTFLOW"] as const;
 export const expenseCategoryValues = ["RENT", "HOSPITALITY", "TRANSPORTATION", "INTERNET", "OPERATIONS", "OTHER"] as const;
 export const commissionTypeValues = ["FIXED", "PERCENTAGE"] as const;
 export const commissionBaseValues = ["RECEIVED_AMOUNT", "PROFIT"] as const;
@@ -20,6 +21,7 @@ export type ReceivedStatusCode = (typeof receivedStatusValues)[number];
 export type DeliveredStatusCode = (typeof deliveredStatusValues)[number];
 export type TransferStatusCode = (typeof transferStatusValues)[number];
 export type TransferExecutionTypeCode = (typeof transferExecutionTypeValues)[number];
+export type CapitalMovementTypeCode = (typeof capitalMovementTypeValues)[number];
 export type ExpenseCategoryCode = (typeof expenseCategoryValues)[number];
 export type CommissionTypeCode = (typeof commissionTypeValues)[number];
 export type CommissionBaseCode = (typeof commissionBaseValues)[number];
@@ -71,6 +73,11 @@ export const transferStatusLabels: Record<TransferStatusCode, string> = {
 export const transferExecutionTypeLabels: Record<TransferExecutionTypeCode, string> = {
   RECEIVED: "دفعة استلام",
   DELIVERED: "دفعة تسليم",
+};
+
+export const capitalMovementTypeLabels: Record<CapitalMovementTypeCode, string> = {
+  INFLOW: "ضخ رأس مال",
+  OUTFLOW: "سحب من رأس المال",
 };
 
 export const expenseCategoryLabels: Record<ExpenseCategoryCode, string> = {
