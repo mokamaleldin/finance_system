@@ -103,7 +103,7 @@ export function ExpenseFilterForm({ from, to, category, currencyCode }: ExpenseF
       </label>
 
       <div className="flex items-end">
-        <Link href="/dashboard/expenses" className="action-secondary min-h-12 w-full px-5 lg:w-auto">
+        <Link href="/dashboard/expenses" prefetch={false} className="action-secondary min-h-12 w-full px-5 lg:w-auto">
           <RotateCcw className="h-4 w-4" />
           إعادة ضبط
         </Link>

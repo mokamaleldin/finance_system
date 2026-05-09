@@ -24,7 +24,7 @@ export function Sidebar({ email }: { email: string }) {
   return (
     <aside className="no-print hidden border-l border-white/10 bg-ink text-white lg:fixed lg:inset-y-0 lg:right-0 lg:flex lg:w-72">
       <div className="flex h-full w-full flex-col bg-[radial-gradient(circle_at_top_right,rgba(217,154,23,0.16),transparent_34%),linear-gradient(180deg,#08231f_0%,#061a17_100%)] p-5">
-        <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-2 py-4">
+        <Link href="/dashboard" prefetch={false} className="flex items-center gap-3 rounded-lg px-2 py-4">
           <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-gold/50 bg-gold/10 text-3xl font-black text-gold shadow-sm">
             ع
           </span>
@@ -43,6 +43,7 @@ export function Sidebar({ email }: { email: string }) {
               <Link
                 key={link.href}
                 href={link.href}
+                prefetch={false}
                 className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm font-semibold transition ${
                   isActive
                     ? "border-gold/45 bg-white/10 text-gold shadow-[inset_3px_0_0_rgba(217,154,23,0.95)]"

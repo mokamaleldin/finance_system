@@ -84,6 +84,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Link
             href={`/api/reports/pdf?${exportParams.toString()}`}
+            prefetch={false}
             target="_blank"
             className="action-primary"
           >
@@ -92,6 +93,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           </Link>
           <Link
             href={`/api/reports/excel?${exportParams.toString()}`}
+            prefetch={false}
             className="action-secondary"
           >
             <FileDown className="h-4 w-4" />

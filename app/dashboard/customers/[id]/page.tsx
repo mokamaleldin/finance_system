@@ -49,6 +49,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         </div>
         <Link
           href={`/api/statements/customer/${summary.customer.id}`}
+          prefetch={false}
           target="_blank"
           className="action-primary w-full sm:w-auto"
         >
@@ -188,7 +189,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
                       <Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge>
                       <Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge>
                     </div>
-                    <Link href={`/dashboard/transactions/${transaction.id}`} className="action-secondary px-3 py-1.5 text-xs">
+                    <Link href={`/dashboard/transactions/${transaction.id}`} prefetch={false} className="action-secondary px-3 py-1.5 text-xs">
                       عرض
                     </Link>
                   </div>
@@ -223,7 +224,7 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
                       <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
                       <td className="py-3"><Badge tone={transaction.status === "COMPLETED" ? "success" : "warning"}>{transferStatusLabels[transaction.status]}</Badge></td>
                       <td className="py-3">
-                        <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
+                        <Link href={`/dashboard/transactions/${transaction.id}`} prefetch={false} className="rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
                           عرض
                         </Link>
                       </td>

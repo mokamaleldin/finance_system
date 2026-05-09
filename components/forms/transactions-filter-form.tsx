@@ -148,7 +148,7 @@ export function TransactionsFilterForm({ customers, defaultValues }: Transaction
         </select>
       </label>
       <div className="flex items-end md:col-span-2 xl:col-span-3 2xl:col-span-1">
-        <Link href="/dashboard/transactions" className="action-secondary min-h-12 w-full px-5">
+        <Link href="/dashboard/transactions" prefetch={false} className="action-secondary min-h-12 w-full px-5">
           <RotateCcw className="h-4 w-4" />
           إعادة ضبط
         </Link>

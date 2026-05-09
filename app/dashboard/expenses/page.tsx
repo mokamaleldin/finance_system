@@ -110,7 +110,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
               notes: editingExpense.notes || "",
             }}
           />
-          <Link href={savedPath} className="mt-3 inline-flex text-sm font-semibold text-olive hover:text-ink">
+          <Link href={savedPath} prefetch={false} className="mt-3 inline-flex text-sm font-semibold text-olive hover:text-ink">
             إلغاء التعديل
           </Link>
         </Card>
@@ -148,7 +148,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                   </div>
                   {expense.notes ? <p className="mt-2 text-sm leading-6 text-muted">{expense.notes}</p> : null}
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href={`/dashboard/expenses?editId=${expense.id}`} className="action-secondary flex-1 px-2 py-2 text-xs">
+                    <Link href={`/dashboard/expenses?editId=${expense.id}`} prefetch={false} className="action-secondary flex-1 px-2 py-2 text-xs">
                       <Pencil className="h-3.5 w-3.5" />
                       تعديل
                     </Link>
@@ -180,7 +180,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                       <td className="py-3 text-muted">{expense.notes || "-"}</td>
                       <td className="py-3">
                         <div className="flex flex-wrap gap-2">
-                          <Link href={`/dashboard/expenses?editId=${expense.id}`} className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
+                          <Link href={`/dashboard/expenses?editId=${expense.id}`} prefetch={false} className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
                             <Pencil className="h-3.5 w-3.5" />
                             تعديل
                           </Link>

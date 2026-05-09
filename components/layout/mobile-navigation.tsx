@@ -25,7 +25,7 @@ export function MobileNavigation({ email }: { email: string }) {
             <Menu className="h-5 w-5" />
           </button>
 
-          <Link href="/dashboard" className="min-w-0 flex-1 text-right">
+          <Link href="/dashboard" prefetch={false} className="min-w-0 flex-1 text-right">
             <p className="truncate text-lg font-bold text-ink">{appBranding.name}</p>
             <p className="truncate text-xs text-muted">{appBranding.tagline}</p>
           </Link>
@@ -42,7 +42,7 @@ export function MobileNavigation({ email }: { email: string }) {
           />
           <aside className="absolute inset-y-0 right-0 flex w-[min(88vw,340px)] flex-col bg-[radial-gradient(circle_at_top_right,rgba(217,154,23,0.16),transparent_34%),linear-gradient(180deg,#08231f_0%,#061a17_100%)] p-4 text-white shadow-soft">
             <div className="flex items-start justify-between gap-3">
-              <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex min-w-0 items-center gap-3">
+              <Link href="/dashboard" prefetch={false} onClick={() => setIsOpen(false)} className="flex min-w-0 items-center gap-3">
                 <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-gold/50 bg-gold/10 text-2xl font-black text-gold">
                   ع
                 </span>
@@ -76,6 +76,7 @@ export function MobileNavigation({ email }: { email: string }) {
                   <Link
                     key={link.href}
                     href={link.href}
+                    prefetch={false}
                     onClick={() => setIsOpen(false)}
                     className={`flex items-center gap-3 rounded-lg border px-3 py-3 text-sm font-semibold transition ${
                       isActive

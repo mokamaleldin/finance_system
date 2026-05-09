@@ -82,6 +82,7 @@ export default async function DashboardPage() {
         </div>
         <Link
           href="/dashboard/transactions/new"
+          prefetch={false}
           className="action-primary w-full sm:w-auto"
         >
           <PlusCircle className="h-4 w-4" />

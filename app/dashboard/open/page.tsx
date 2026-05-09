@@ -94,7 +94,7 @@ export default async function OpenTransactionsPage() {
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Link href={`/dashboard/transactions/${transaction.id}`} className="action-secondary px-3 py-2 text-xs">
+                      <Link href={`/dashboard/transactions/${transaction.id}`} prefetch={false} className="action-secondary px-3 py-2 text-xs">
                         فتح العملية
                       </Link>
                       {!settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
@@ -137,7 +137,7 @@ export default async function OpenTransactionsPage() {
                         <td className="py-3"><Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge></td>
                         <td className="py-3">
                           <div className="flex flex-wrap gap-2">
-                            <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
+                            <Link href={`/dashboard/transactions/${transaction.id}`} prefetch={false} className="rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
                               فتح العملية
                             </Link>
                             {!settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}

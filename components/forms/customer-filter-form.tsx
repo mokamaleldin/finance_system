@@ -81,7 +81,7 @@ export function CustomerFilterForm({ q, sort, balance }: CustomerFilterFormProps
         </select>
       </label>
 
-      <Link href="/dashboard/customers" className="action-secondary min-h-12 px-5">
+      <Link href="/dashboard/customers" prefetch={false} className="action-secondary min-h-12 px-5">
         <RotateCcw className="h-4 w-4" />
         إعادة ضبط
       </Link>

@@ -60,7 +60,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
           <h2 className="text-2xl font-bold text-ink sm:text-3xl">سجل المعاملات</h2>
           <p className="mt-1 text-sm text-muted">كل عمليات التحويل مع حالة الاستلام والتسليم والربح.</p>
         </div>
-        <Link href="/dashboard/transactions/new" className="action-primary w-full sm:w-auto">
+        <Link href="/dashboard/transactions/new" prefetch={false} className="action-primary w-full sm:w-auto">
           <PlusCircle className="h-4 w-4" />
           معاملة جديدة
         </Link>
@@ -137,11 +137,11 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href={`/dashboard/transactions/${transaction.id}`} className="action-secondary flex-1 px-2 py-2 text-xs">
+                    <Link href={`/dashboard/transactions/${transaction.id}`} prefetch={false} className="action-secondary flex-1 px-2 py-2 text-xs">
                       <Eye className="h-3.5 w-3.5" />
                       عرض
                     </Link>
-                    <Link href={`/dashboard/transactions/${transaction.id}/edit`} className="action-secondary flex-1 px-2 py-2 text-xs">
+                    <Link href={`/dashboard/transactions/${transaction.id}/edit`} prefetch={false} className="action-secondary flex-1 px-2 py-2 text-xs">
                       <Pencil className="h-3.5 w-3.5" />
                       تعديل
                     </Link>
@@ -197,6 +197,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                         <div className="flex items-center gap-1">
                           <Link
                             href={`/dashboard/transactions/${transaction.id}`}
+                            prefetch={false}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm hover:bg-mint"
                             title="عرض"
                           >
@@ -205,6 +206,7 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                           </Link>
                           <Link
                             href={`/dashboard/transactions/${transaction.id}/edit`}
+                            prefetch={false}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm hover:bg-mint"
                             title="تعديل"
                           >

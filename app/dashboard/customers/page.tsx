@@ -196,6 +196,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                   <div className="grid grid-cols-2 border-t border-line/70 bg-paper/40">
                     <Link
                       href={`/dashboard/customers/${customer.id}`}
+                      prefetch={false}
                       className="inline-flex items-center justify-center gap-2 border-l border-line/70 px-3 py-3 text-sm font-semibold text-ink hover:bg-mint"
                     >
                       <Eye className="h-3.5 w-3.5" />
@@ -203,6 +204,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                     </Link>
                     <Link
                       href={`/api/statements/customer/${customer.id}`}
+                      prefetch={false}
                       target="_blank"
                       className="inline-flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold text-ink hover:bg-mint"
                     >
@@ -221,6 +223,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Link
                 href={getPageHref(params, Math.max(1, safePage - 1))}
+                prefetch={false}
                 aria-disabled={safePage === 1}
                 className={`rounded-lg border border-line px-3 py-2 text-sm font-semibold shadow-sm ${
                   safePage === 1 ? "pointer-events-none bg-paper text-muted" : "bg-white text-ink hover:bg-mint"
@@ -232,6 +235,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                 <Link
                   key={page}
                   href={getPageHref(params, page)}
+                  prefetch={false}
                   className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-bold shadow-sm ${
                     safePage === page
                       ? "border-ink bg-ink text-white"
@@ -243,6 +247,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
               ))}
               <Link
                 href={getPageHref(params, Math.min(totalPages, safePage + 1))}
+                prefetch={false}
                 aria-disabled={safePage === totalPages}
                 className={`rounded-lg border border-line px-3 py-2 text-sm font-semibold shadow-sm ${
                   safePage === totalPages ? "pointer-events-none bg-paper text-muted" : "bg-white text-ink hover:bg-mint"

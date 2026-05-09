@@ -56,7 +56,7 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
           <p className="mt-1 text-sm text-muted">{transaction.customerNameSnapshot}</p>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <Link href={`/dashboard/transactions/${transaction.id}/edit`} className="action-secondary flex-1 px-3 py-2 sm:flex-none">
+          <Link href={`/dashboard/transactions/${transaction.id}/edit`} prefetch={false} className="action-secondary flex-1 px-3 py-2 sm:flex-none">
             <Pencil className="h-4 w-4" />
             تعديل
           </Link>

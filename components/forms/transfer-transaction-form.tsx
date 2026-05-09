@@ -376,28 +376,35 @@ export function TransferTransactionForm({
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setServerError("");
-    setIsSubmitting(true);
-
-    const response = await fetch(
-      transactionId ? `/api/transactions/${transactionId}` : "/api/transactions",
-      {
-        method: transactionId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      },
-    );
-
-    setIsSubmitting(false);
-
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      setServerError(payload?.message ?? "تعذر حفظ العملية");
+    if (isSubmitting) {
       return;
     }
 
-    router.push("/dashboard/transactions");
-    router.refresh();
+    setServerError("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(
+        transactionId ? `/api/transactions/${transactionId}` : "/api/transactions",
+        {
+          method: transactionId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        setServerError(payload?.message ?? "تعذر حفظ العملية");
+        return;
+      }
+
+      router.replace("/dashboard/transactions");
+    } catch {
+      setServerError("تعذر الاتصال بالسيرفر. حاول مرة أخرى.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
