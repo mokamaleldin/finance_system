@@ -1,7 +1,12 @@
 import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CancelTransactionButton, CompleteStepButton } from "@/components/forms/transaction-actions";
+import {
+  CancelTransactionButton,
+  CompleteStepButton,
+  DeleteTransferExecutionButton,
+  TransferExecutionForm,
+} from "@/components/forms/transaction-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { customerSelect } from "@/lib/customer-select";
@@ -12,11 +17,12 @@ import {
   commissionTypeLabels,
   deliveredStatusLabels,
   receivedStatusLabels,
+  transferExecutionTypeLabels,
   transferStatusLabels,
   transferTypeLabels,
 } from "@/lib/options";
 import { prisma } from "@/lib/prisma";
-import { getRateDirection } from "@/lib/transfer-calculations";
+import { getOpenAmountInfos, getRateDirection, getTransferSettlement } from "@/lib/transfer-calculations";
 
 type TransactionDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -26,7 +32,11 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
   const { id } = await params;
   const transaction = await prisma.transferTransaction.findUnique({
     where: { id },
-    include: { customer: { select: customerSelect }, commission: true },
+    include: {
+      customer: { select: customerSelect },
+      commission: true,
+      executions: { orderBy: [{ date: "asc" }, { createdAt: "asc" }] },
+    },
   });
 
   if (!transaction) {
@@ -35,6 +45,8 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
   const fallbackDirection = getRateDirection(transaction.receivedCurrency, transaction.deliveredCurrency);
   const rateBaseCurrency = transaction.rateBaseCurrency || fallbackDirection.rateBaseCurrency;
   const rateQuoteCurrency = transaction.rateQuoteCurrency || fallbackDirection.rateQuoteCurrency;
+  const settlement = getTransferSettlement(transaction);
+  const openItems = getOpenAmountInfos(transaction);
 
   return (
     <div className="grid gap-6">
@@ -73,6 +85,99 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
         </div>
       </Card>
 
+      <Card title="الدفعات والمتبقي" subtitle="يمكن تسجيل الاستلام أو التسليم على أكثر من مرة حسب الواقع.">
+        <div className="grid gap-4 lg:grid-cols-4">
+          <div className="rounded-lg bg-paper p-4">
+            <p className="text-sm text-muted">استلمنا فعليًا</p>
+            <p className="mt-2 font-bold">{formatMoney(settlement.totalReceived, transaction.receivedCurrency)}</p>
+          </div>
+          <div className="rounded-lg bg-paper p-4">
+            <p className="text-sm text-muted">باقي لنا عند العميل</p>
+            <p className="mt-2 font-bold">{formatMoney(settlement.remainingReceived, transaction.receivedCurrency)}</p>
+          </div>
+          <div className="rounded-lg bg-mint p-4">
+            <p className="text-sm text-muted">سلمنا فعليًا</p>
+            <p className="mt-2 font-bold">{formatMoney(settlement.totalDelivered, transaction.deliveredCurrency)}</p>
+          </div>
+          <div className="rounded-lg bg-mint p-4">
+            <p className="text-sm text-muted">باقي علينا للعميل</p>
+            <p className="mt-2 font-bold">{formatMoney(settlement.remainingDelivered, transaction.deliveredCurrency)}</p>
+          </div>
+        </div>
+
+        {settlement.extraReceived.gt(0) || settlement.extraDelivered.gt(0) ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {settlement.extraReceived.gt(0) ? (
+              <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700">
+                زيادة استلام: {formatMoney(settlement.extraReceived, transaction.receivedCurrency)}
+              </div>
+            ) : null}
+            {settlement.extraDelivered.gt(0) ? (
+              <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700">
+                زيادة تسليم: {formatMoney(settlement.extraDelivered, transaction.deliveredCurrency)}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {transaction.status !== "CANCELLED" ? (
+          <div className="mt-5">
+            <TransferExecutionForm
+              transactionId={transaction.id}
+              receivedCurrency={transaction.receivedCurrency}
+              deliveredCurrency={transaction.deliveredCurrency}
+              remainingReceived={settlement.remainingReceived.toString()}
+              remainingDelivered={settlement.remainingDelivered.toString()}
+            />
+          </div>
+        ) : null}
+
+        <div className="mt-5">
+          {transaction.executions.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-line bg-paper px-4 py-5 text-center text-sm text-muted">
+              لا توجد دفعات مسجلة بعد.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-line/70">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead>
+                  <tr className="border-b border-line text-right text-muted">
+                    <th className="px-3 py-3 font-semibold">التاريخ</th>
+                    <th className="px-3 py-3 font-semibold">النوع</th>
+                    <th className="px-3 py-3 font-semibold">المبلغ</th>
+                    <th className="px-3 py-3 font-semibold">ملاحظات</th>
+                    <th className="px-3 py-3 font-semibold">حذف</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transaction.executions.map((execution) => (
+                    <tr key={execution.id} className="border-b border-line/70 last:border-b-0">
+                      <td className="px-3 py-3">{formatDate(execution.date)}</td>
+                      <td className="px-3 py-3 font-semibold">{transferExecutionTypeLabels[execution.type]}</td>
+                      <td className="px-3 py-3">{formatMoney(execution.amount, execution.currency)}</td>
+                      <td className="max-w-[240px] px-3 py-3 text-muted">{execution.notes || "-"}</td>
+                      <td className="px-3 py-3">
+                        <DeleteTransferExecutionButton executionId={execution.id} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {openItems.length > 0 ? (
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {openItems.map((item) => (
+              <div key={`${item.side}-${item.currency}`} className="rounded-lg border border-line/80 bg-white px-3 py-2 text-sm font-bold text-ink">
+                {item.label}: {formatMoney(item.amount, item.currency)}
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="الأسعار والحساب">
           <dl className="grid gap-3 text-sm">
@@ -87,20 +192,20 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
           <div className="grid gap-3">
             <div className="flex items-center justify-between gap-3 rounded-lg bg-paper p-3">
               <span>حالة الاستلام</span>
-              <Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge>
+              <Badge>{receivedStatusLabels[settlement.receivedStatus]}</Badge>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-lg bg-paper p-3">
               <span>حالة التسليم</span>
-              <Badge>{deliveredStatusLabels[transaction.deliveredStatus]}</Badge>
+              <Badge>{deliveredStatusLabels[settlement.deliveredStatus]}</Badge>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-lg bg-paper p-3">
               <span>حالة العملية</span>
-              <Badge tone={transaction.status === "COMPLETED" ? "success" : transaction.status === "CANCELLED" ? "danger" : "warning"}>{transferStatusLabels[transaction.status]}</Badge>
+              <Badge tone={settlement.status === "COMPLETED" ? "success" : settlement.status === "CANCELLED" ? "danger" : "warning"}>{transferStatusLabels[settlement.status]}</Badge>
             </div>
             {transaction.status === "OPEN" ? (
               <div className="flex flex-wrap gap-2 pt-2">
-                {transaction.receivedStatus !== "RECEIVED" ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
-                {transaction.deliveredStatus !== "DELIVERED" ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
+                {!settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
+                {!settlement.isDeliveredComplete ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
               </div>
             ) : null}
           </div>

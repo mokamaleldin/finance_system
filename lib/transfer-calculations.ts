@@ -49,6 +49,39 @@ export function deriveTransferStatus(
     : "OPEN";
 }
 
+export function deriveTransferStatusFromAmounts(input: {
+  receivedAmount: DecimalInput;
+  deliveredAmount: DecimalInput;
+  totalReceived: DecimalInput;
+  totalDelivered: DecimalInput;
+  cancelled?: boolean;
+}): {
+  receivedStatus: ReceivedStatusCode;
+  deliveredStatus: DeliveredStatusCode;
+  status: TransferStatusCode;
+} {
+  if (input.cancelled) {
+    return {
+      receivedStatus: "RECEIVED" as const,
+      deliveredStatus: "DELIVERED" as const,
+      status: "CANCELLED" as const,
+    };
+  }
+
+  const receivedStatus: ReceivedStatusCode = toDecimal(input.totalReceived).gte(toDecimal(input.receivedAmount))
+    ? "RECEIVED"
+    : "NOT_RECEIVED";
+  const deliveredStatus: DeliveredStatusCode = toDecimal(input.totalDelivered).gte(toDecimal(input.deliveredAmount))
+    ? "DELIVERED"
+    : "NOT_DELIVERED";
+
+  return {
+    receivedStatus,
+    deliveredStatus,
+    status: deriveTransferStatus(receivedStatus, deliveredStatus),
+  };
+}
+
 export function getRateDirection(
   receivedCurrency: CurrencyCode,
   deliveredCurrency: CurrencyCode,
@@ -249,6 +282,97 @@ export function getRemainingSide(transaction: {
   return null;
 }
 
+export type TransferExecutionLike = {
+  type: "RECEIVED" | "DELIVERED";
+  amount: DecimalInput;
+};
+
+export function getTransferSettlement(transaction: {
+  status: TransferStatusCode;
+  receivedAmount: DecimalInput;
+  deliveredAmount: DecimalInput;
+  executions?: TransferExecutionLike[] | null;
+}) {
+  const totalReceived = (transaction.executions ?? [])
+    .filter((execution) => execution.type === "RECEIVED")
+    .reduce((total, execution) => total.plus(toDecimal(execution.amount)), new Decimal(0))
+    .toDecimalPlaces(4);
+  const totalDelivered = (transaction.executions ?? [])
+    .filter((execution) => execution.type === "DELIVERED")
+    .reduce((total, execution) => total.plus(toDecimal(execution.amount)), new Decimal(0))
+    .toDecimalPlaces(4);
+  const expectedReceived = toDecimal(transaction.receivedAmount).toDecimalPlaces(4);
+  const expectedDelivered = toDecimal(transaction.deliveredAmount).toDecimalPlaces(4);
+  const remainingReceived = Decimal.max(expectedReceived.minus(totalReceived), 0).toDecimalPlaces(4);
+  const remainingDelivered = Decimal.max(expectedDelivered.minus(totalDelivered), 0).toDecimalPlaces(4);
+  const extraReceived = Decimal.max(totalReceived.minus(expectedReceived), 0).toDecimalPlaces(4);
+  const extraDelivered = Decimal.max(totalDelivered.minus(expectedDelivered), 0).toDecimalPlaces(4);
+  const derived = deriveTransferStatusFromAmounts({
+    receivedAmount: expectedReceived,
+    deliveredAmount: expectedDelivered,
+    totalReceived,
+    totalDelivered,
+    cancelled: transaction.status === "CANCELLED",
+  });
+
+  return {
+    expectedReceived,
+    expectedDelivered,
+    totalReceived,
+    totalDelivered,
+    remainingReceived,
+    remainingDelivered,
+    extraReceived,
+    extraDelivered,
+    receivedStatus: derived.receivedStatus,
+    deliveredStatus: derived.deliveredStatus,
+    status: derived.status,
+    isReceivedComplete: remainingReceived.isZero(),
+    isDeliveredComplete: remainingDelivered.isZero(),
+  };
+}
+
+export function getOpenAmountInfos(transaction: {
+  status: TransferStatusCode;
+  receivedCurrency: CurrencyCode;
+  receivedAmount: DecimalInput;
+  deliveredCurrency: CurrencyCode;
+  deliveredAmount: DecimalInput;
+  executions?: TransferExecutionLike[] | null;
+}) {
+  if (transaction.status === "CANCELLED") {
+    return [];
+  }
+
+  const settlement = getTransferSettlement(transaction);
+  const items: Array<{
+    side: "CUSTOMER_OWES_US" | "OWE_CUSTOMER";
+    label: string;
+    amount: Decimal;
+    currency: CurrencyCode;
+  }> = [];
+
+  if (settlement.remainingReceived.gt(0)) {
+    items.push({
+      side: "CUSTOMER_OWES_US",
+      label: "لنا عند العميل",
+      amount: settlement.remainingReceived,
+      currency: transaction.receivedCurrency,
+    });
+  }
+
+  if (settlement.remainingDelivered.gt(0)) {
+    items.push({
+      side: "OWE_CUSTOMER",
+      label: "علينا للعميل",
+      amount: settlement.remainingDelivered,
+      currency: transaction.deliveredCurrency,
+    });
+  }
+
+  return items;
+}
+
 export function getOpenAmountInfo(transaction: {
   receivedStatus: ReceivedStatusCode;
   deliveredStatus: DeliveredStatusCode;
@@ -257,7 +381,22 @@ export function getOpenAmountInfo(transaction: {
   receivedAmount: DecimalInput;
   deliveredCurrency: CurrencyCode;
   deliveredAmount: DecimalInput;
+  executions?: TransferExecutionLike[] | null;
 }) {
+  const amountInfos = getOpenAmountInfos(transaction);
+  if (amountInfos.length === 1) {
+    return amountInfos[0];
+  }
+
+  if (amountInfos.length > 1) {
+    return {
+      side: "PENDING" as const,
+      label: "باقي استلام وتسليم",
+      amount: new Decimal(0),
+      currency: transaction.receivedCurrency,
+    };
+  }
+
   const side = getRemainingSide(transaction);
 
   if (side === "OWE_CUSTOMER") {

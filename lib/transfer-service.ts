@@ -5,7 +5,12 @@ import {
   getCommissionCurrency,
   type CommissionInput,
 } from "@/lib/commission";
-import { calculateTransfer, deriveTransferStatus, getRemainingSide } from "@/lib/transfer-calculations";
+import {
+  calculateTransfer,
+  deriveTransferStatus,
+  deriveTransferStatusFromAmounts,
+  getOpenAmountInfos,
+} from "@/lib/transfer-calculations";
 import { emptyCurrencyTotals, toDecimal, toMoneyString } from "@/lib/calculations";
 import { customerSelect } from "@/lib/customer-select";
 import { formatDateInput, getDateRange } from "@/lib/format";
@@ -14,6 +19,7 @@ import {
   type CurrencyCode,
   type DeliveredStatusCode,
   type ReceivedStatusCode,
+  type TransferExecutionTypeCode,
   type TransferStatusCode,
   type TransferTypeCode,
 } from "@/lib/options";
@@ -26,12 +32,13 @@ type TransferInput = z.output<typeof transferTransactionSchema>;
 const transactionInclude = {
   customer: { select: customerSelect },
   commission: true,
+  executions: { orderBy: [{ date: "asc" }, { createdAt: "asc" }] },
 } satisfies Prisma.TransferTransactionInclude;
 
 // Safe select that purposely omits the `customer` relation so we don't
 // accidentally select `Customer.customerType` before the DB migration
 // has been applied. Use this in read paths that must be resilient.
-const transactionSelect = {
+export const transactionSelect = {
   id: true,
   date: true,
   customerId: true,
@@ -65,6 +72,18 @@ const transactionSelect = {
   createdAt: true,
   updatedAt: true,
   commission: true,
+  executions: {
+    select: {
+      id: true,
+      date: true,
+      type: true,
+      currency: true,
+      amount: true,
+      notes: true,
+      createdAt: true,
+    },
+    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+  },
 } satisfies Prisma.TransferTransactionSelect;
 
 export type TransferWithCustomer = Prisma.TransferTransactionGetPayload<{
@@ -79,6 +98,10 @@ type TransferSummaryTransaction = {
   receivedAmount: Decimal.Value;
   deliveredCurrency: CurrencyCode;
   deliveredAmount: Decimal.Value;
+  executions?: Array<{
+    type: TransferExecutionTypeCode;
+    amount: Decimal.Value;
+  }> | null;
 };
 
 type PrismaWriteClient = typeof prisma | Prisma.TransactionClient;
@@ -203,6 +226,146 @@ async function syncTransactionCommission(
   });
 }
 
+async function syncExecutionStatus(db: PrismaWriteClient, transactionId: string) {
+  const transaction = await db.transferTransaction.findUniqueOrThrow({
+    where: { id: transactionId },
+    select: {
+      receivedAmount: true,
+      deliveredAmount: true,
+      status: true,
+      executions: {
+        select: {
+          type: true,
+          amount: true,
+        },
+      },
+    },
+  });
+  const totalReceived = transaction.executions
+    .filter((execution) => execution.type === "RECEIVED")
+    .reduce((total, execution) => total.plus(execution.amount), new Decimal(0));
+  const totalDelivered = transaction.executions
+    .filter((execution) => execution.type === "DELIVERED")
+    .reduce((total, execution) => total.plus(execution.amount), new Decimal(0));
+  const derived = deriveTransferStatusFromAmounts({
+    receivedAmount: transaction.receivedAmount,
+    deliveredAmount: transaction.deliveredAmount,
+    totalReceived,
+    totalDelivered,
+    cancelled: transaction.status === "CANCELLED",
+  });
+
+  if (transaction.status === "CANCELLED") {
+    return transaction;
+  }
+
+  return db.transferTransaction.update({
+    where: { id: transactionId },
+    data: {
+      receivedStatus: derived.receivedStatus,
+      deliveredStatus: derived.deliveredStatus,
+      status: derived.status,
+    },
+  });
+}
+
+async function createInitialExecution(
+  db: PrismaWriteClient,
+  transactionId: string,
+  data: {
+    date: Date;
+    receivedStatus: ReceivedStatusCode;
+    deliveredStatus: DeliveredStatusCode;
+    receivedCurrency: CurrencyCode;
+    receivedAmount: Decimal.Value;
+    deliveredCurrency: CurrencyCode;
+    deliveredAmount: Decimal.Value;
+  },
+) {
+  const executions: Prisma.TransferExecutionCreateManyInput[] = [];
+
+  if (data.receivedStatus === "RECEIVED") {
+    executions.push({
+      transactionId,
+      date: data.date,
+      type: "RECEIVED",
+      currency: data.receivedCurrency,
+      amount: normalizeMoney(data.receivedAmount),
+      notes: "دفعة استلام عند إنشاء العملية",
+    });
+  }
+
+  if (data.deliveredStatus === "DELIVERED") {
+    executions.push({
+      transactionId,
+      date: data.date,
+      type: "DELIVERED",
+      currency: data.deliveredCurrency,
+      amount: normalizeMoney(data.deliveredAmount),
+      notes: "دفعة تسليم عند إنشاء العملية",
+    });
+  }
+
+  if (executions.length > 0) {
+    for (const execution of executions) {
+      await db.transferExecution.create({ data: execution });
+    }
+  }
+}
+
+async function createMissingFullExecutions(
+  db: PrismaWriteClient,
+  transactionId: string,
+  data: {
+    date: Date;
+    receivedStatus: ReceivedStatusCode;
+    deliveredStatus: DeliveredStatusCode;
+    receivedCurrency: CurrencyCode;
+    receivedAmount: Decimal.Value;
+    deliveredCurrency: CurrencyCode;
+    deliveredAmount: Decimal.Value;
+  },
+) {
+  const existing = await db.transferExecution.findMany({
+    where: { transactionId },
+    select: { type: true, amount: true },
+  });
+  const totalReceived = existing
+    .filter((execution) => execution.type === "RECEIVED")
+    .reduce((total, execution) => total.plus(execution.amount), new Decimal(0));
+  const totalDelivered = existing
+    .filter((execution) => execution.type === "DELIVERED")
+    .reduce((total, execution) => total.plus(execution.amount), new Decimal(0));
+  const remainingReceived = new Decimal(data.receivedAmount).minus(totalReceived);
+  const remainingDelivered = new Decimal(data.deliveredAmount).minus(totalDelivered);
+
+  if (data.receivedStatus === "RECEIVED" && remainingReceived.gt(0)) {
+    await db.transferExecution.create({
+      data: {
+        transactionId,
+        date: data.date,
+        type: "RECEIVED",
+        currency: data.receivedCurrency,
+        amount: normalizeMoney(remainingReceived),
+        notes: "دفعة استلام كاملة من تعديل الحالة",
+      },
+    });
+  }
+
+  if (data.deliveredStatus === "DELIVERED" && remainingDelivered.gt(0)) {
+    await db.transferExecution.create({
+      data: {
+        transactionId,
+        date: data.date,
+        type: "DELIVERED",
+        currency: data.deliveredCurrency,
+        amount: normalizeMoney(remainingDelivered),
+        notes: "دفعة تسليم كاملة من تعديل الحالة",
+      },
+    });
+  }
+}
+
 export async function createTransferTransaction(input: TransferInput) {
   const usdRates = normalizeUsdRates(input);
   const calculation = calculateTransfer({
@@ -255,6 +418,16 @@ export async function createTransferTransaction(input: TransferInput) {
       profitAmount: calculation.profitAmount,
       profitCurrency: calculation.profitCurrency,
     });
+    await createInitialExecution(db, transaction.id, {
+      date: input.date,
+      receivedStatus: input.receivedStatus,
+      deliveredStatus: input.deliveredStatus,
+      receivedCurrency: input.receivedCurrency,
+      receivedAmount: input.receivedAmount,
+      deliveredCurrency: input.deliveredCurrency,
+      deliveredAmount: calculation.deliveredAmount,
+    });
+    await syncExecutionStatus(db, transaction.id);
 
     return db.transferTransaction.findUniqueOrThrow({
       where: { id: transaction.id },
@@ -323,6 +496,16 @@ export async function updateTransferTransaction(id: string, input: TransferInput
       profitAmount: calculation.profitAmount,
       profitCurrency: calculation.profitCurrency,
     });
+    await createMissingFullExecutions(db, id, {
+      date: input.date,
+      receivedStatus: input.receivedStatus,
+      deliveredStatus: input.deliveredStatus,
+      receivedCurrency: input.receivedCurrency,
+      receivedAmount: input.receivedAmount,
+      deliveredCurrency: input.deliveredCurrency,
+      deliveredAmount: calculation.deliveredAmount,
+    });
+    await syncExecutionStatus(db, id);
 
     return db.transferTransaction.findUniqueOrThrow({
       where: { id },
@@ -349,16 +532,111 @@ export async function setTransferStepStatus(
     deliveredStatus: DeliveredStatusCode;
   }>,
 ) {
-  const current = await prisma.transferTransaction.findUniqueOrThrow({ where: { id } });
-  const receivedStatus = data.receivedStatus ?? (current.receivedStatus as ReceivedStatusCode);
-  const deliveredStatus = data.deliveredStatus ?? (current.deliveredStatus as DeliveredStatusCode);
+  return prisma.$transaction(async (db) => {
+    const current = await db.transferTransaction.findUniqueOrThrow({
+      where: { id },
+      include: { executions: true },
+    });
 
-  return prisma.transferTransaction.update({
-    where: { id },
-    data: {
-      ...data,
-      status: deriveTransferStatus(receivedStatus, deliveredStatus, current.status === "CANCELLED"),
-    },
+    if (current.status === "CANCELLED") {
+      return current;
+    }
+
+    const totalReceived = current.executions
+      .filter((execution) => execution.type === "RECEIVED")
+      .reduce((total, execution) => total.plus(execution.amount), new Decimal(0));
+    const totalDelivered = current.executions
+      .filter((execution) => execution.type === "DELIVERED")
+      .reduce((total, execution) => total.plus(execution.amount), new Decimal(0));
+
+    if (data.receivedStatus === "RECEIVED" && totalReceived.lt(current.receivedAmount)) {
+      await db.transferExecution.create({
+        data: {
+          transactionId: id,
+          type: "RECEIVED",
+          currency: current.receivedCurrency,
+          amount: normalizeMoney(new Decimal(current.receivedAmount).minus(totalReceived)),
+          notes: "استكمال الاستلام",
+        },
+      });
+    }
+
+    if (data.deliveredStatus === "DELIVERED" && totalDelivered.lt(current.deliveredAmount)) {
+      await db.transferExecution.create({
+        data: {
+          transactionId: id,
+          type: "DELIVERED",
+          currency: current.deliveredCurrency,
+          amount: normalizeMoney(new Decimal(current.deliveredAmount).minus(totalDelivered)),
+          notes: "استكمال التسليم",
+        },
+      });
+    }
+
+    await syncExecutionStatus(db, id);
+
+    return db.transferTransaction.findUniqueOrThrow({
+      where: { id },
+      include: transactionInclude,
+    });
+  });
+}
+
+export async function createTransferExecution(
+  transactionId: string,
+  input: {
+    date?: Date;
+    type: TransferExecutionTypeCode;
+    amount: Decimal.Value;
+    notes?: string | null;
+  },
+) {
+  return prisma.$transaction(async (db) => {
+    const transaction = await db.transferTransaction.findUniqueOrThrow({
+      where: { id: transactionId },
+      select: {
+        status: true,
+        receivedCurrency: true,
+        deliveredCurrency: true,
+      },
+    });
+
+    if (transaction.status === "CANCELLED") {
+      throw new Error("لا يمكن إضافة دفعات على عملية ملغاة");
+    }
+
+    const currency = input.type === "RECEIVED"
+      ? transaction.receivedCurrency
+      : transaction.deliveredCurrency;
+
+    await db.transferExecution.create({
+      data: {
+        transactionId,
+        date: input.date ?? new Date(),
+        type: input.type,
+        currency,
+        amount: normalizeMoney(input.amount),
+        notes: nullableString(input.notes),
+      },
+    });
+    await syncExecutionStatus(db, transactionId);
+
+    return db.transferTransaction.findUniqueOrThrow({
+      where: { id: transactionId },
+      select: transactionSelect,
+    });
+  });
+}
+
+export async function deleteTransferExecution(id: string) {
+  return prisma.$transaction(async (db) => {
+    const execution = await db.transferExecution.delete({ where: { id } });
+    await syncExecutionStatus(db, execution.transactionId);
+
+    return db.transferTransaction.findUniqueOrThrow({
+      where: { id: execution.transactionId },
+      select: transactionSelect,
+    });
   });
 }
 
@@ -537,20 +815,16 @@ export function calculateOpenSummary(transactions: TransferSummaryTransaction[])
   const customerOwesUs = emptyCurrencyTotals();
 
   for (const transaction of transactions) {
-    const side = getRemainingSide({
-      receivedStatus: transaction.receivedStatus,
-      deliveredStatus: transaction.deliveredStatus,
-      status: transaction.status,
-    });
+    const items = getOpenAmountInfos(transaction);
 
-    if (side === "OWE_CUSTOMER") {
-      oweCustomer[transaction.deliveredCurrency] =
-        oweCustomer[transaction.deliveredCurrency].plus(transaction.deliveredAmount);
-    }
+    for (const item of items) {
+      if (item.side === "OWE_CUSTOMER") {
+        oweCustomer[item.currency] = oweCustomer[item.currency].plus(item.amount);
+      }
 
-    if (side === "CUSTOMER_OWES_US") {
-      customerOwesUs[transaction.receivedCurrency] =
-        customerOwesUs[transaction.receivedCurrency].plus(transaction.receivedAmount);
+      if (item.side === "CUSTOMER_OWES_US") {
+        customerOwesUs[item.currency] = customerOwesUs[item.currency].plus(item.amount);
+      }
     }
   }
 

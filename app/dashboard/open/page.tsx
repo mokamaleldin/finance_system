@@ -11,7 +11,7 @@ import {
   receivedStatusLabels,
   transferTypeLabels,
 } from "@/lib/options";
-import { getOpenAmountInfo } from "@/lib/transfer-calculations";
+import { getOpenAmountInfos, getTransferSettlement } from "@/lib/transfer-calculations";
 import { getOpenTransfers } from "@/lib/transfer-service";
 
 export default async function OpenTransactionsPage() {
@@ -64,15 +64,8 @@ export default async function OpenTransactionsPage() {
           <div>
             <div className="grid gap-3 md:hidden">
               {report.transactions.map((transaction) => {
-                const openInfo = getOpenAmountInfo({
-                  receivedStatus: transaction.receivedStatus,
-                  deliveredStatus: transaction.deliveredStatus,
-                  status: transaction.status,
-                  receivedCurrency: transaction.receivedCurrency,
-                  receivedAmount: transaction.receivedAmount,
-                  deliveredCurrency: transaction.deliveredCurrency,
-                  deliveredAmount: transaction.deliveredAmount,
-                });
+                const openItems = getOpenAmountInfos(transaction);
+                const settlement = getTransferSettlement(transaction);
 
                 return (
                   <div key={transaction.id} className="record-card">
@@ -85,16 +78,14 @@ export default async function OpenTransactionsPage() {
                       </div>
                     </div>
 
-                    <div className="mt-3 rounded-lg border border-line/70 bg-mint/70 px-3 py-2 font-bold text-ink">
-                      {openInfo
-                        ? openInfo.side === "PENDING"
-                          ? openInfo.label
-                          : (
-                              <span>
-                                {openInfo.label}: {formatMoney(openInfo.amount, openInfo.currency)}
-                              </span>
-                            )
-                        : "-"}
+                    <div className="mt-3 grid gap-2">
+                      {openItems.length > 0
+                        ? openItems.map((item) => (
+                            <div key={`${item.side}-${item.currency}`} className="rounded-lg border border-line/70 bg-mint/70 px-3 py-2 font-bold text-ink">
+                              {item.label}: {formatMoney(item.amount, item.currency)}
+                            </div>
+                          ))
+                        : <div className="rounded-lg border border-line/70 bg-mint/70 px-3 py-2 font-bold text-ink">-</div>}
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-1">
@@ -106,8 +97,8 @@ export default async function OpenTransactionsPage() {
                       <Link href={`/dashboard/transactions/${transaction.id}`} className="action-secondary px-3 py-2 text-xs">
                         فتح العملية
                       </Link>
-                      {transaction.receivedStatus !== "RECEIVED" ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
-                      {transaction.deliveredStatus !== "DELIVERED" ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
+                      {!settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
+                      {!settlement.isDeliveredComplete ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
                     </div>
                   </div>
                 );
@@ -129,15 +120,8 @@ export default async function OpenTransactionsPage() {
                 </thead>
                 <tbody>
                   {report.transactions.map((transaction) => {
-                    const openInfo = getOpenAmountInfo({
-                      receivedStatus: transaction.receivedStatus,
-                      deliveredStatus: transaction.deliveredStatus,
-                      status: transaction.status,
-                      receivedCurrency: transaction.receivedCurrency,
-                      receivedAmount: transaction.receivedAmount,
-                      deliveredCurrency: transaction.deliveredCurrency,
-                      deliveredAmount: transaction.deliveredAmount,
-                    });
+                    const openItems = getOpenAmountInfos(transaction);
+                    const settlement = getTransferSettlement(transaction);
 
                     return (
                       <tr key={transaction.id} className="border-b border-line/70">
@@ -145,10 +129,8 @@ export default async function OpenTransactionsPage() {
                         <td className="py-3 font-semibold">{transaction.customerNameSnapshot}</td>
                         <td className="py-3">{transferTypeLabels[transaction.type]}</td>
                         <td className="py-3 font-semibold">
-                          {openInfo
-                            ? openInfo.side === "PENDING"
-                              ? openInfo.label
-                              : `${openInfo.label}: ${formatMoney(openInfo.amount, openInfo.currency)}`
+                          {openItems.length > 0
+                            ? openItems.map((item) => `${item.label}: ${formatMoney(item.amount, item.currency)}`).join(" / ")
                             : "-"}
                         </td>
                         <td className="py-3"><Badge>{receivedStatusLabels[transaction.receivedStatus]}</Badge></td>
@@ -158,8 +140,8 @@ export default async function OpenTransactionsPage() {
                             <Link href={`/dashboard/transactions/${transaction.id}`} className="rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
                               فتح العملية
                             </Link>
-                            {transaction.receivedStatus !== "RECEIVED" ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
-                            {transaction.deliveredStatus !== "DELIVERED" ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
+                            {!settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
+                            {!settlement.isDeliveredComplete ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
                           </div>
                         </td>
                       </tr>
