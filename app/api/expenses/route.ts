@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("expenses:create");
   if (authError) return authError;
 
   const parsed = expenseSchema.safeParse(await request.json());

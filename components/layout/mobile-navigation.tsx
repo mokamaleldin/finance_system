@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { LogoutButton } from "@/components/layout/logout-button";
-import { navigationLinks } from "@/components/layout/nav-links";
+import { getNavigationLinks } from "@/components/layout/nav-links";
 import { appBranding } from "@/lib/branding";
+import { roleLabels, type UserRole } from "@/lib/permissions";
 
-export function MobileNavigation({ email }: { email: string }) {
+export function MobileNavigation({ email, role }: { email: string; role: UserRole }) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const navigationLinks = getNavigationLinks(role);
 
   return (
     <>
@@ -92,7 +94,10 @@ export function MobileNavigation({ email }: { email: string }) {
             </nav>
 
             <div className="mt-auto grid gap-3 border-t border-white/10 pt-4">
-              <p className="truncate text-xs text-white/70">{email}</p>
+              <div>
+                <p className="truncate text-xs text-white/70">{email}</p>
+                <p className="mt-1 truncate text-xs font-semibold text-gold">{roleLabels[role]}</p>
+              </div>
               <LogoutButton />
             </div>
           </aside>

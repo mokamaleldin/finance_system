@@ -5,6 +5,7 @@ import { TransactionsFilterForm } from "@/components/forms/transactions-filter-f
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requireAdminSession } from "@/lib/auth";
 import { customerOptionSelect } from "@/lib/customer-select";
 import { formatDate, formatDecimal, formatMoney, parseOptionalDateParam } from "@/lib/format";
 import {
@@ -19,6 +20,7 @@ import {
   type TransferStatusCode,
   type TransferTypeCode,
 } from "@/lib/options";
+import { hasPermission } from "@/lib/permissions";
 import { getTransferTransactions } from "@/lib/transfer-service";
 import { prisma } from "@/lib/prisma";
 
@@ -31,6 +33,8 @@ function pick<T extends readonly string[]>(value: unknown, values: T) {
 }
 
 export default async function TransactionsPage({ searchParams }: TransactionsPageProps) {
+  const session = await requireAdminSession();
+  const canWriteTransactions = hasPermission(session.role, "transactions:write");
   const params = (await searchParams) ?? {};
   const from = parseOptionalDateParam(params.from);
   const to = parseOptionalDateParam(params.to, true);
@@ -60,10 +64,12 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
           <h2 className="text-2xl font-bold text-ink sm:text-3xl">سجل المعاملات</h2>
           <p className="mt-1 text-sm text-muted">كل عمليات التحويل مع حالة الاستلام والتسليم والربح.</p>
         </div>
-        <Link href="/dashboard/transactions/new" prefetch={false} className="action-primary w-full sm:w-auto">
-          <PlusCircle className="h-4 w-4" />
-          معاملة جديدة
-        </Link>
+        {canWriteTransactions ? (
+          <Link href="/dashboard/transactions/new" prefetch={false} className="action-primary w-full sm:w-auto">
+            <PlusCircle className="h-4 w-4" />
+            معاملة جديدة
+          </Link>
+        ) : null}
       </div>
 
       <section className="rounded-lg border border-line/80 bg-white/95 p-4 shadow-soft sm:p-5">
@@ -141,11 +147,15 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                       <Eye className="h-3.5 w-3.5" />
                       عرض
                     </Link>
-                    <Link href={`/dashboard/transactions/${transaction.id}/edit`} prefetch={false} className="action-secondary flex-1 px-2 py-2 text-xs">
-                      <Pencil className="h-3.5 w-3.5" />
-                      تعديل
-                    </Link>
-                    {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} /> : null}
+                    {canWriteTransactions ? (
+                      <>
+                        <Link href={`/dashboard/transactions/${transaction.id}/edit`} prefetch={false} className="action-secondary flex-1 px-2 py-2 text-xs">
+                          <Pencil className="h-3.5 w-3.5" />
+                          تعديل
+                        </Link>
+                        {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} /> : null}
+                      </>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -204,16 +214,20 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
                             <Eye className="h-3.5 w-3.5" />
                             <span className="sr-only">عرض</span>
                           </Link>
-                          <Link
-                            href={`/dashboard/transactions/${transaction.id}/edit`}
-                            prefetch={false}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm hover:bg-mint"
-                            title="تعديل"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            <span className="sr-only">تعديل</span>
-                          </Link>
-                          {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} compact /> : null}
+                          {canWriteTransactions ? (
+                            <>
+                              <Link
+                                href={`/dashboard/transactions/${transaction.id}/edit`}
+                                prefetch={false}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-white text-ink shadow-sm hover:bg-mint"
+                                title="تعديل"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                <span className="sr-only">تعديل</span>
+                              </Link>
+                              {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} compact /> : null}
+                            </>
+                          ) : null}
                         </div>
                       </td>
                     </tr>

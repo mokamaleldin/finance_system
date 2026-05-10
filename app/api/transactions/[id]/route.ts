@@ -23,7 +23,7 @@ const cancelSchema = z.object({
 });
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("transactions:write");
   if (authError) return authError;
 
   const { id } = await context.params;
@@ -53,7 +53,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("transactions:write");
   if (authError) return authError;
 
   const { id } = await context.params;

@@ -3,6 +3,7 @@ import { CompleteStepButton } from "@/components/forms/transaction-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requireAdminSession } from "@/lib/auth";
 import { currencies } from "@/lib/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import {
@@ -11,10 +12,13 @@ import {
   receivedStatusLabels,
   transferTypeLabels,
 } from "@/lib/options";
+import { hasPermission } from "@/lib/permissions";
 import { getOpenAmountInfos, getTransferSettlement } from "@/lib/transfer-calculations";
 import { getOpenTransfers } from "@/lib/transfer-service";
 
 export default async function OpenTransactionsPage() {
+  const session = await requireAdminSession();
+  const canWriteTransactions = hasPermission(session.role, "transactions:write");
   const report = await getOpenTransfers();
 
   return (
@@ -97,8 +101,8 @@ export default async function OpenTransactionsPage() {
                       <Link href={`/dashboard/transactions/${transaction.id}`} prefetch={false} className="action-secondary px-3 py-2 text-xs">
                         فتح العملية
                       </Link>
-                      {!settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
-                      {!settlement.isDeliveredComplete ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
+                      {canWriteTransactions && !settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
+                      {canWriteTransactions && !settlement.isDeliveredComplete ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
                     </div>
                   </div>
                 );
@@ -140,8 +144,8 @@ export default async function OpenTransactionsPage() {
                             <Link href={`/dashboard/transactions/${transaction.id}`} prefetch={false} className="rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
                               فتح العملية
                             </Link>
-                            {!settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
-                            {!settlement.isDeliveredComplete ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
+                            {canWriteTransactions && !settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
+                            {canWriteTransactions && !settlement.isDeliveredComplete ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}
                           </div>
                         </td>
                       </tr>

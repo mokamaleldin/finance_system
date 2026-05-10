@@ -5,6 +5,7 @@ import { BarChart, DonutChart, MiniLineChart } from "@/components/ui/analytics-c
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requireAdminSession } from "@/lib/auth";
 import { currencies } from "@/lib/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import {
@@ -15,6 +16,7 @@ import {
   transferStatusLabels,
   transferTypeLabels,
 } from "@/lib/options";
+import { hasPermission } from "@/lib/permissions";
 import { getCustomerTransferSummary } from "@/lib/transfer-service";
 
 type CustomerDetailPageProps = {
@@ -22,6 +24,8 @@ type CustomerDetailPageProps = {
 };
 
 export default async function CustomerDetailPage({ params }: CustomerDetailPageProps) {
+  const session = await requireAdminSession();
+  const canWriteCustomers = hasPermission(session.role, "customers:write");
   const { id } = await params;
   const summary = await getCustomerTransferSummary(id);
   const activityByDate = Object.values(
@@ -58,26 +62,28 @@ export default async function CustomerDetailPage({ params }: CustomerDetailPageP
         </Link>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="بيانات العميل">
+      <div className={`grid gap-4 ${canWriteCustomers ? "lg:grid-cols-3" : ""}`}>
+        <Card title="بيانات العميل" className={canWriteCustomers ? "" : "max-w-3xl"}>
           <dl className="grid gap-3 text-sm">
             <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">نوع الحساب</dt><dd className="font-semibold">{customerKindLabels[summary.customer.kind]}</dd></div>
             <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">الهاتف</dt><dd className="font-semibold">{summary.customer.phone || "-"}</dd></div>
             <div className="flex flex-wrap justify-between gap-2"><dt className="text-muted">ملاحظات</dt><dd className="font-semibold">{summary.customer.notes || "-"}</dd></div>
           </dl>
         </Card>
-        <Card title="تعديل بيانات العميل" className="lg:col-span-2">
-          <CustomerForm
-            customerId={summary.customer.id}
-            initialValues={{
-              name: summary.customer.name,
-              kind: summary.customer.kind,
-              phone: summary.customer.phone || "",
-              country: summary.customer.country || "",
-              notes: summary.customer.notes || "",
-            }}
-          />
-        </Card>
+        {canWriteCustomers ? (
+          <Card title="تعديل بيانات العميل" className="lg:col-span-2">
+            <CustomerForm
+              customerId={summary.customer.id}
+              initialValues={{
+                name: summary.customer.name,
+                kind: summary.customer.kind,
+                phone: summary.customer.phone || "",
+                country: summary.customer.country || "",
+                notes: summary.customer.notes || "",
+              }}
+            />
+          </Card>
+        ) : null}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

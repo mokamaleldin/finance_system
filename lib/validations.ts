@@ -1,6 +1,10 @@
 import Decimal from "decimal.js";
 import { z } from "zod";
 import {
+  userRoles,
+  type UserRole,
+} from "@/lib/permissions";
+import {
   currencyValues,
   capitalMovementTypeValues,
   commissionBaseValues,
@@ -42,6 +46,24 @@ export const loginSchema = z.object({
   email: z.string().email("البريد الإلكتروني غير صحيح"),
   password: z.string().min(1, requiredText),
 });
+
+export const userCreateSchema = z.object({
+  email: z.string().trim().toLowerCase().email("البريد الإلكتروني غير صحيح"),
+  password: z.string().min(6, "كلمة المرور يجب ألا تقل عن 6 أحرف"),
+  role: z.enum(userRoles),
+});
+
+export const userUpdateSchema = z.object({
+  password: z
+    .string()
+    .trim()
+    .optional()
+    .default("")
+    .refine((value) => value === "" || value.length >= 6, "كلمة المرور يجب ألا تقل عن 6 أحرف"),
+  role: z.enum(userRoles),
+});
+
+export type UserFormRole = UserRole;
 
 export const customerSchema = z.object({
   name: z.string().trim().min(2, "اسم العميل مطلوب"),

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { TransferTransactionForm } from "@/components/forms/transfer-transaction-form";
+import { requirePagePermission } from "@/lib/auth";
 import { customerOptionSelect } from "@/lib/customer-select";
 import { formatDateInput } from "@/lib/format";
 import type { CurrencyCode } from "@/lib/options";
@@ -10,6 +11,7 @@ type EditTransactionPageProps = {
 };
 
 export default async function EditTransactionPage({ params }: EditTransactionPageProps) {
+  await requirePagePermission("transactions:write");
   const { id } = await params;
   const [transaction, customers] = await Promise.all([
     prisma.transferTransaction.findUnique({ where: { id }, include: { commission: true } }),

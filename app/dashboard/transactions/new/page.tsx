@@ -1,8 +1,10 @@
 import { TransferTransactionForm } from "@/components/forms/transfer-transaction-form";
+import { requirePagePermission } from "@/lib/auth";
 import { customerOptionSelect } from "@/lib/customer-select";
 import { prisma } from "@/lib/prisma";
 
 export default async function NewTransactionPage() {
+  await requirePagePermission("transactions:write");
   const customers = await prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect });
 
   return (

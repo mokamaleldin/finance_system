@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { MovementForm } from "@/components/forms/movement-form";
 import { Card } from "@/components/ui/card";
+import { requirePagePermission } from "@/lib/auth";
 import { customerOptionSelect } from "@/lib/customer-select";
 import { formatDateInput } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -10,6 +11,7 @@ type EditMovementPageProps = {
 };
 
 export default async function EditMovementPage({ params }: EditMovementPageProps) {
+  await requirePagePermission("transactions:write");
   const { id } = await params;
   const [movement, customers, transactionGroups] = await Promise.all([
     prisma.financialMovement.findUnique({ where: { id } }),

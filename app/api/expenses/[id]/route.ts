@@ -8,7 +8,7 @@ type RouteContext = {
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("expenses:write");
   if (authError) return authError;
 
   const { id } = await context.params;
@@ -24,7 +24,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("expenses:write");
   if (authError) return authError;
 
   const { id } = await context.params;

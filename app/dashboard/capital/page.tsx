@@ -1,11 +1,13 @@
 import { Pencil, PlusCircle, WalletCards } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { DeleteCapitalMovementButton } from "@/components/forms/capital-movement-actions";
 import { CapitalFilterForm } from "@/components/forms/capital-filter-form";
 import { CapitalMovementForm } from "@/components/forms/capital-movement-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, StatCard } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requirePagePermission } from "@/lib/auth";
 import { calculateCapitalSummary, getCapitalMovement, getCapitalMovements, getCapitalSummary } from "@/lib/capital-service";
 import { formatDate, formatDateInput, formatMoney, parseOptionalDateParam } from "@/lib/format";
 import {
@@ -16,6 +18,7 @@ import {
   type CapitalMovementTypeCode,
   type CurrencyCode,
 } from "@/lib/options";
+import { hasPermission } from "@/lib/permissions";
 
 type CapitalPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -26,12 +29,18 @@ function pick<T extends readonly string[]>(value: unknown, values: T) {
 }
 
 export default async function CapitalPage({ searchParams }: CapitalPageProps) {
+  const session = await requirePagePermission("capital:read");
+  const canWriteCapital = hasPermission(session.role, "capital:write");
   const params = (await searchParams) ?? {};
   const from = parseOptionalDateParam(params.from);
   const to = parseOptionalDateParam(params.to, true);
   const type = pick(params.type, capitalMovementTypeValues) as CapitalMovementTypeCode | undefined;
   const currencyCode = pick(params.currencyCode, currencyValues) as CurrencyCode | undefined;
   const editId = typeof params.editId === "string" ? params.editId : "";
+
+  if (editId && !canWriteCapital) {
+    redirect("/dashboard/capital");
+  }
 
   const [movements, editingMovement, fullSummary] = await Promise.all([
     getCapitalMovements({ from, to, type, currencyCode }),
@@ -54,10 +63,12 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
           <h2 className="text-3xl font-bold text-ink">رأس المال</h2>
           <p className="mt-1 text-sm text-muted">تابع رأس المال الأصلي، الضخ، والسحب لكل عملة بشكل منفصل.</p>
         </div>
-        <a href="#capital-form" className="action-primary w-full sm:w-auto">
-          <PlusCircle className="h-4 w-4" />
-          إضافة حركة
-        </a>
+        {canWriteCapital ? (
+          <a href="#capital-form" className="action-primary w-full sm:w-auto">
+            <PlusCircle className="h-4 w-4" />
+            إضافة حركة
+          </a>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -80,29 +91,31 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
         ))}
       </div>
 
-      <Card title={editingMovement ? "تعديل حركة رأس مال" : "إضافة حركة رأس مال"} subtitle="استخدم الضخ عند إدخال مال جديد، والسحب عند خروج مال من رأس المال.">
-        <div id="capital-form">
-          <CapitalMovementForm
-            movementId={editingMovement?.id}
-            onSavedPath={savedPath}
-            initialValues={editingMovement
-              ? {
-                  date: formatDateInput(editingMovement.date),
-                  type: editingMovement.type,
-                  currencyCode: editingMovement.currencyCode,
-                  amount: editingMovement.amount.toString(),
-                  description: editingMovement.description,
-                  notes: editingMovement.notes || "",
-                }
-              : undefined}
-          />
-        </div>
-        {editingMovement ? (
-          <Link href={savedPath} prefetch={false} className="mt-3 inline-flex text-sm font-semibold text-olive hover:text-ink">
-            إلغاء التعديل
-          </Link>
-        ) : null}
-      </Card>
+      {canWriteCapital ? (
+        <Card title={editingMovement ? "تعديل حركة رأس مال" : "إضافة حركة رأس مال"} subtitle="استخدم الضخ عند إدخال مال جديد، والسحب عند خروج مال من رأس المال.">
+          <div id="capital-form">
+            <CapitalMovementForm
+              movementId={editingMovement?.id}
+              onSavedPath={savedPath}
+              initialValues={editingMovement
+                ? {
+                    date: formatDateInput(editingMovement.date),
+                    type: editingMovement.type,
+                    currencyCode: editingMovement.currencyCode,
+                    amount: editingMovement.amount.toString(),
+                    description: editingMovement.description,
+                    notes: editingMovement.notes || "",
+                  }
+                : undefined}
+            />
+          </div>
+          {editingMovement ? (
+            <Link href={savedPath} prefetch={false} className="mt-3 inline-flex text-sm font-semibold text-olive hover:text-ink">
+              إلغاء التعديل
+            </Link>
+          ) : null}
+        </Card>
+      ) : null}
 
       <section className="rounded-lg border border-line/80 bg-white/95 p-4 shadow-soft sm:p-5">
         <div className="mb-5 border-b border-line/70 pb-3">
@@ -170,13 +183,15 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
                     <strong>{formatMoney(movement.amount, movement.currencyCode)}</strong>
                   </div>
                   {movement.notes ? <p className="mt-2 text-sm leading-6 text-muted">{movement.notes}</p> : null}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href={`/dashboard/capital?editId=${movement.id}`} prefetch={false} className="action-secondary flex-1 px-2 py-2 text-xs">
-                      <Pencil className="h-3.5 w-3.5" />
-                      تعديل
-                    </Link>
-                    <DeleteCapitalMovementButton movementId={movement.id} />
-                  </div>
+                  {canWriteCapital ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link href={`/dashboard/capital?editId=${movement.id}`} prefetch={false} className="action-secondary flex-1 px-2 py-2 text-xs">
+                        <Pencil className="h-3.5 w-3.5" />
+                        تعديل
+                      </Link>
+                      <DeleteCapitalMovementButton movementId={movement.id} />
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -190,7 +205,7 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
                     <th className="py-3 font-semibold">الوصف</th>
                     <th className="py-3 font-semibold">المبلغ</th>
                     <th className="py-3 font-semibold">ملاحظات</th>
-                    <th className="py-3 font-semibold">إجراءات</th>
+                    {canWriteCapital ? <th className="py-3 font-semibold">إجراءات</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -203,15 +218,17 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
                       <td className="py-3 font-semibold text-ink">{movement.description}</td>
                       <td className="py-3">{formatMoney(movement.amount, movement.currencyCode)}</td>
                       <td className="py-3 text-muted">{movement.notes || "-"}</td>
-                      <td className="py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Link href={`/dashboard/capital?editId=${movement.id}`} prefetch={false} className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
-                            <Pencil className="h-3.5 w-3.5" />
-                            تعديل
-                          </Link>
-                          <DeleteCapitalMovementButton movementId={movement.id} />
-                        </div>
-                      </td>
+                      {canWriteCapital ? (
+                        <td className="py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Link href={`/dashboard/capital?editId=${movement.id}`} prefetch={false} className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-2 py-1 text-xs font-semibold text-ink shadow-sm hover:bg-mint">
+                              <Pencil className="h-3.5 w-3.5" />
+                              تعديل
+                            </Link>
+                            <DeleteCapitalMovementButton movementId={movement.id} />
+                          </div>
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>

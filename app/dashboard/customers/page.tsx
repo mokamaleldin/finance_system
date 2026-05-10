@@ -11,9 +11,11 @@ import { CustomerCreateModal } from "@/components/forms/customer-create-modal";
 import { CustomerFilterForm } from "@/components/forms/customer-filter-form";
 import { StatCard } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requireAdminSession } from "@/lib/auth";
 import { currencies, toDecimal } from "@/lib/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import { customerKindLabels } from "@/lib/options";
+import { hasPermission } from "@/lib/permissions";
 import { getCustomerListWithTransferSummary } from "@/lib/transfer-service";
 
 type CustomersPageProps = {
@@ -65,6 +67,9 @@ function getPageHref(params: Record<string, string | string[] | undefined>, page
 }
 
 export default async function CustomersPage({ searchParams }: CustomersPageProps) {
+  const session = await requireAdminSession();
+  const canCreateCustomers = hasPermission(session.role, "customers:create");
+  const canWriteCustomers = hasPermission(session.role, "customers:write");
   const params = (await searchParams) ?? {};
   const q = typeof params.q === "string" ? params.q.trim() : "";
   const sort = typeof params.sort === "string" ? params.sort : "recent";
@@ -107,7 +112,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
           <h2 className="text-3xl font-bold text-ink">العملاء والتجار</h2>
           <p className="mt-1 text-sm text-muted">إدارة العملاء والتجار ومتابعة تعاملاتهم وأرصدتهم بسهولة.</p>
         </div>
-        <CustomerCreateModal />
+        {canCreateCustomers ? <CustomerCreateModal /> : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -149,7 +154,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3 p-4">
-                    <CustomerCardMenu customerId={customer.id} />
+                    {canWriteCustomers ? <CustomerCardMenu customerId={customer.id} /> : null}
                     <div className="min-w-0 flex-1 text-center">
                       <h4 className="truncate text-base font-bold text-ink">{customer.name}</h4>
                       <span className="mt-1 inline-flex rounded-full border border-olive/15 bg-mint px-2.5 py-1 text-xs font-bold text-olive">

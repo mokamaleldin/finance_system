@@ -1,4 +1,5 @@
 import { Currency, MovementType } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import {
   calculateCrossRate,
   toMoneyString,
@@ -22,6 +23,47 @@ const noCommission = {
 };
 
 async function main() {
+  const passwordSaltRounds = 10;
+
+  await Promise.all([
+    prisma.user.upsert({
+      where: { email: "omar@admin.com" },
+      update: {
+        passwordHash: await bcrypt.hash("omaradmin", passwordSaltRounds),
+        role: "FULL_ADMIN",
+      },
+      create: {
+        email: "omar@admin.com",
+        passwordHash: await bcrypt.hash("omaradmin", passwordSaltRounds),
+        role: "FULL_ADMIN",
+      },
+    }),
+    prisma.user.upsert({
+      where: { email: "ahmed@admin.com" },
+      update: {
+        passwordHash: await bcrypt.hash("ahmedadmin", passwordSaltRounds),
+        role: "OPERATOR",
+      },
+      create: {
+        email: "ahmed@admin.com",
+        passwordHash: await bcrypt.hash("ahmedadmin", passwordSaltRounds),
+        role: "OPERATOR",
+      },
+    }),
+    prisma.user.upsert({
+      where: { email: "normal@admin.com" },
+      update: {
+        passwordHash: await bcrypt.hash("normaladdmin", passwordSaltRounds),
+        role: "VIEWER",
+      },
+      create: {
+        email: "normal@admin.com",
+        passwordHash: await bcrypt.hash("normaladdmin", passwordSaltRounds),
+        role: "VIEWER",
+      },
+    }),
+  ]);
+
   await prisma.commission.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.transferTransaction.deleteMany();

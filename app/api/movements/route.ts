@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { movementSchema, nullableDecimalString, nullableString } from "@/lib/validations";
 
 export async function POST(request: Request) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("transactions:write");
   if (authError) return authError;
 
   const parsed = movementSchema.safeParse(await request.json());

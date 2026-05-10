@@ -15,7 +15,7 @@ function pick<T extends readonly string[]>(value: string | null, values: T) {
 }
 
 export async function GET(request: Request) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("capital:read");
   if (authError) return authError;
 
   try {
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("capital:write");
   if (authError) return authError;
 
   const parsed = capitalMovementSchema.safeParse(await request.json());

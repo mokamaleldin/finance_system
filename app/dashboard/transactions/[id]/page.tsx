@@ -9,6 +9,7 @@ import {
 } from "@/components/forms/transaction-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { requireAdminSession } from "@/lib/auth";
 import { customerSelect } from "@/lib/customer-select";
 import { formatDate, formatDecimal, formatMoney } from "@/lib/format";
 import {
@@ -21,6 +22,7 @@ import {
   transferStatusLabels,
   transferTypeLabels,
 } from "@/lib/options";
+import { hasPermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getOpenAmountInfos, getRateDirection, getTransferSettlement } from "@/lib/transfer-calculations";
 
@@ -29,6 +31,8 @@ type TransactionDetailPageProps = {
 };
 
 export default async function TransactionDetailPage({ params }: TransactionDetailPageProps) {
+  const session = await requireAdminSession();
+  const canWriteTransactions = hasPermission(session.role, "transactions:write");
   const { id } = await params;
   const transaction = await prisma.transferTransaction.findUnique({
     where: { id },
@@ -55,13 +59,15 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
           <h2 className="text-3xl font-bold text-ink">تفاصيل العملية</h2>
           <p className="mt-1 text-sm text-muted">{transaction.customerNameSnapshot}</p>
         </div>
-        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <Link href={`/dashboard/transactions/${transaction.id}/edit`} prefetch={false} className="action-secondary flex-1 px-3 py-2 sm:flex-none">
-            <Pencil className="h-4 w-4" />
-            تعديل
-          </Link>
-          {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} /> : null}
-        </div>
+        {canWriteTransactions ? (
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <Link href={`/dashboard/transactions/${transaction.id}/edit`} prefetch={false} className="action-secondary flex-1 px-3 py-2 sm:flex-none">
+              <Pencil className="h-4 w-4" />
+              تعديل
+            </Link>
+            {transaction.status !== "CANCELLED" ? <CancelTransactionButton transactionId={transaction.id} /> : null}
+          </div>
+        ) : null}
       </div>
 
       <Card title="ملخص العملية">
@@ -120,7 +126,7 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
           </div>
         ) : null}
 
-        {transaction.status !== "CANCELLED" ? (
+        {canWriteTransactions && transaction.status !== "CANCELLED" ? (
           <div className="mt-5">
             <TransferExecutionForm
               transactionId={transaction.id}
@@ -146,7 +152,7 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
                     <th className="px-3 py-3 font-semibold">النوع</th>
                     <th className="px-3 py-3 font-semibold">المبلغ</th>
                     <th className="px-3 py-3 font-semibold">ملاحظات</th>
-                    <th className="px-3 py-3 font-semibold">حذف</th>
+                    {canWriteTransactions ? <th className="px-3 py-3 font-semibold">حذف</th> : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -156,9 +162,11 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
                       <td className="px-3 py-3 font-semibold">{transferExecutionTypeLabels[execution.type]}</td>
                       <td className="px-3 py-3">{formatMoney(execution.amount, execution.currency)}</td>
                       <td className="max-w-[240px] px-3 py-3 text-muted">{execution.notes || "-"}</td>
-                      <td className="px-3 py-3">
-                        <DeleteTransferExecutionButton executionId={execution.id} />
-                      </td>
+                      {canWriteTransactions ? (
+                        <td className="px-3 py-3">
+                          <DeleteTransferExecutionButton executionId={execution.id} />
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
@@ -202,7 +210,7 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
               <span>حالة العملية</span>
               <Badge tone={settlement.status === "COMPLETED" ? "success" : settlement.status === "CANCELLED" ? "danger" : "warning"}>{transferStatusLabels[settlement.status]}</Badge>
             </div>
-            {transaction.status === "OPEN" ? (
+            {canWriteTransactions && transaction.status === "OPEN" ? (
               <div className="flex flex-wrap gap-2 pt-2">
                 {!settlement.isReceivedComplete ? <CompleteStepButton transactionId={transaction.id} step="received" /> : null}
                 {!settlement.isDeliveredComplete ? <CompleteStepButton transactionId={transaction.id} step="delivered" /> : null}

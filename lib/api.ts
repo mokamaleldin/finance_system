@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { requireApiSession } from "@/lib/auth";
+import { hasPermission, type Permission } from "@/lib/permissions";
 
-export async function requireApiAuth() {
-  if (!(await requireApiSession())) {
+export async function requireApiAuth(permission?: Permission) {
+  const session = await requireApiSession();
+
+  if (!session) {
     return NextResponse.json({ message: "غير مصرح" }, { status: 401 });
+  }
+
+  if (permission && !hasPermission(session.role, permission)) {
+    return NextResponse.json({ message: "ليست لديك صلاحية لتنفيذ هذا الإجراء" }, { status: 403 });
   }
 
   return null;

@@ -13,16 +13,16 @@ export async function POST(request: Request) {
   }
 
   try {
-    const isValid = verifyAdminCredentials(parsed.data.email, parsed.data.password);
+    const session = await verifyAdminCredentials(parsed.data.email, parsed.data.password);
 
-    if (!isValid) {
+    if (!session) {
       return NextResponse.json({ message: "البريد أو كلمة المرور غير صحيحة" }, { status: 401 });
     }
 
     const response = NextResponse.json({ ok: true });
     response.cookies.set(
       SESSION_COOKIE_NAME,
-      createSessionToken(parsed.data.email),
+      createSessionToken(session),
       getSessionCookieOptions(),
     );
 

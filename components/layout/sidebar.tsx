@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/layout/logout-button";
-import { navigationLinks } from "@/components/layout/nav-links";
+import { getNavigationLinks } from "@/components/layout/nav-links";
 import { appBranding } from "@/lib/branding";
+import { roleLabels, type UserRole } from "@/lib/permissions";
 
 function isActivePath(pathname: string, href: string) {
   if (href === "/dashboard") {
@@ -18,8 +19,9 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function Sidebar({ email }: { email: string }) {
+export function Sidebar({ email, role }: { email: string; role: UserRole }) {
   const pathname = usePathname();
+  const navigationLinks = getNavigationLinks(role);
 
   return (
     <aside className="no-print hidden border-l border-white/10 bg-ink text-white lg:fixed lg:inset-y-0 lg:right-0 lg:flex lg:w-72">
@@ -60,6 +62,7 @@ export function Sidebar({ email }: { email: string }) {
         <div className="mt-auto rounded-lg border border-white/10 bg-white/10 p-3 shadow-sm">
           <p className="truncate text-sm font-bold text-white">{appBranding.name}</p>
           <p className="mt-1 truncate text-xs text-white/60">{email}</p>
+          <p className="mt-1 truncate text-xs font-semibold text-gold">{roleLabels[role]}</p>
           <div className="mt-3">
             <LogoutButton />
           </div>

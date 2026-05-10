@@ -2,9 +2,11 @@ import { CheckCircle2, Clock3, PlusCircle, Receipt, Users2 } from "lucide-react"
 import Link from "next/link";
 import { BarChart, MiniLineChart } from "@/components/ui/analytics-charts";
 import { Card, StatCard } from "@/components/ui/card";
+import { requireAdminSession } from "@/lib/auth";
 import { currencies } from "@/lib/calculations";
 import { formatDate, formatDecimal, formatMoney } from "@/lib/format";
 import { currencyLabels } from "@/lib/options";
+import { hasPermission } from "@/lib/permissions";
 import { getDashboardTrends, getTodayDashboard } from "@/lib/transfer-service";
 
 
@@ -33,6 +35,8 @@ function buildTrend(today: number, yesterday: number) {
 }
 
 export default async function DashboardPage() {
+  const session = await requireAdminSession();
+  const canWriteTransactions = hasPermission(session.role, "transactions:write");
   const trendDays = 7;
   const today = new Date();
   const yesterday = new Date(today);
@@ -80,14 +84,16 @@ export default async function DashboardPage() {
           <h2 className="text-3xl font-bold text-ink">لوحة التحكم</h2>
           <p className="mt-1 text-sm text-muted">أرقام اليوم فقط حسب تاريخ العملية.</p>
         </div>
-        <Link
-          href="/dashboard/transactions/new"
-          prefetch={false}
-          className="action-primary w-full sm:w-auto"
-        >
-          <PlusCircle className="h-4 w-4" />
-          معاملة جديدة
-        </Link>
+        {canWriteTransactions ? (
+          <Link
+            href="/dashboard/transactions/new"
+            prefetch={false}
+            className="action-primary w-full sm:w-auto"
+          >
+            <PlusCircle className="h-4 w-4" />
+            معاملة جديدة
+          </Link>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { exchangeRateSchema, nullableString } from "@/lib/validations";
 
 export async function POST(request: Request) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("rates:write");
   if (authError) return authError;
 
   const parsed = exchangeRateSchema.safeParse(await request.json());

@@ -1,12 +1,16 @@
 import crypto from "node:crypto";
+import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE_NAME } from "@/lib/auth-constants";
+import { hasPermission, isUserRole, type Permission, type UserRole } from "@/lib/permissions";
+import { prisma } from "@/lib/prisma";
 
 export { SESSION_COOKIE_NAME };
 
 type SessionPayload = {
   email: string;
+  role: UserRole;
   exp: number;
 };
 
@@ -39,20 +43,48 @@ function safeCompare(left: string, right: string) {
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-export function verifyAdminCredentials(email: string, password: string) {
+async function verifyPassword(password: string, storedPassword: string) {
+  if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+    return bcrypt.compare(password, storedPassword);
+  }
+
+  return safeCompare(password, storedPassword);
+}
+
+export async function verifyAdminCredentials(email: string, password: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  let canUseEnvFallback = false;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { email: true, passwordHash: true, role: true },
+    });
+
+    if (user && await verifyPassword(password, user.passwordHash)) {
+      return { email: user.email, role: user.role as UserRole };
+    }
+
+    canUseEnvFallback = await prisma.user.count() === 0;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
 
-  if (!adminEmail || !adminPassword) {
-    throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD must be configured.");
+  if (canUseEnvFallback && adminEmail && adminPassword && safeCompare(normalizedEmail, adminEmail.toLowerCase()) && safeCompare(password, adminPassword)) {
+    return { email: adminEmail, role: "FULL_ADMIN" as const };
   }
 
-  return safeCompare(email, adminEmail) && safeCompare(password, adminPassword);
+  return null;
 }
 
-export function createSessionToken(email: string) {
+export function createSessionToken(session: Pick<SessionPayload, "email" | "role">) {
   const payload = base64UrlJson({
-    email,
+    email: session.email,
+    role: session.role,
     exp: Date.now() + 1000 * 60 * 60 * 12,
   });
 
@@ -73,7 +105,7 @@ export function verifySessionToken(token: string | undefined) {
   try {
     const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as SessionPayload;
 
-    if (!session.email || session.exp < Date.now()) {
+    if (!session.email || !isUserRole(session.role) || session.exp < Date.now()) {
       return null;
     }
 
@@ -99,7 +131,17 @@ export async function requireAdminSession() {
 }
 
 export async function requireApiSession() {
-  return Boolean(await getCurrentAdmin());
+  return await getCurrentAdmin();
+}
+
+export async function requirePagePermission(permission: Permission) {
+  const session = await requireAdminSession();
+
+  if (!hasPermission(session.role, permission)) {
+    redirect("/dashboard");
+  }
+
+  return session;
 }
 
 export function getSessionCookieOptions() {

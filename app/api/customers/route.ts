@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authError = await requireApiAuth();
+  const authError = await requireApiAuth("customers:create");
   if (authError) return authError;
 
   const parsed = customerSchema.safeParse(await request.json());
