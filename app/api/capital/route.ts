@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ movements });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "GET /api/capital");
   }
 }
 
@@ -44,6 +44,6 @@ export async function POST(request: Request) {
     const movement = await createCapitalMovement(parsed.data);
     return NextResponse.json({ movement }, { status: 201 });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "POST /api/capital");
   }
 }

@@ -34,6 +34,6 @@ export async function POST(request: Request, context: RouteContext) {
     });
     return NextResponse.json({ transaction });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "POST /api/transactions/[id]/executions");
   }
 }

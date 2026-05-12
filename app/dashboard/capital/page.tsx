@@ -7,6 +7,7 @@ import { CapitalFilterForm } from "@/components/forms/capital-filter-form";
 import { CapitalMovementForm } from "@/components/forms/capital-movement-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, StatCard } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requirePagePermission } from "@/lib/auth";
 import {
@@ -30,6 +31,7 @@ import {
   type CurrencyCode,
 } from "@/lib/options";
 import { hasPermission } from "@/lib/permissions";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 
 type CapitalPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -53,23 +55,46 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
     redirect("/dashboard/capital");
   }
 
-  const [movements, editingMovement, fullSummary, currentCashBalances, closeRateDefaults, capitalCloses] = await Promise.all([
-    getCapitalMovements({ from, to, type, currencyCode }),
-    editId ? getCapitalMovement(editId) : Promise.resolve(null),
-    getCapitalSummary(),
-    getCapitalCashBalances(new Date()),
-    getCapitalCloseRateDefaults(),
-    getCapitalCloses(),
-  ]);
-  const filteredSummary = calculateCapitalSummary(movements);
-  const latestClose = capitalCloses[0];
-
   const filterParams = new URLSearchParams();
   if (from) filterParams.set("from", formatDateInput(from));
   if (to) filterParams.set("to", formatDateInput(to));
   if (type) filterParams.set("type", type);
   if (currencyCode) filterParams.set("currencyCode", currencyCode);
   const savedPath = `/dashboard/capital${filterParams.toString() ? `?${filterParams.toString()}` : ""}`;
+  let pageData;
+  try {
+    logMissingServerEnv("dashboard/capital");
+    pageData = await Promise.all([
+      getCapitalMovements({ from, to, type, currencyCode }),
+      editId ? getCapitalMovement(editId) : Promise.resolve(null),
+      getCapitalSummary(),
+      getCapitalCashBalances(new Date()),
+      getCapitalCloseRateDefaults(),
+      getCapitalCloses(),
+    ]);
+  } catch (error) {
+    logServerError("dashboard/capital: failed to load capital data", error);
+    return (
+      <div className="grid gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+          <div>
+            <h2 className="text-3xl font-bold text-ink">رأس المال</h2>
+            <p className="mt-1 text-sm text-muted">تابع رصيد الكاش الفعلي، وسجل جرد اليوم بالدولار حسب الريت.</p>
+          </div>
+          {canWriteCapital ? (
+            <a href="#capital-form" className="action-primary w-full sm:w-auto">
+              <PlusCircle className="h-4 w-4" />
+              إضافة حركة
+            </a>
+          ) : null}
+        </div>
+        <DataError description="تعذر تحميل بيانات رأس المال. إذا ظهر هذا في الإنتاج فراجع هل تم تطبيق migration جدول CapitalClose على Nile." />
+      </div>
+    );
+  }
+  const [movements, editingMovement, fullSummary, currentCashBalances, closeRateDefaults, capitalCloses] = pageData;
+  const filteredSummary = calculateCapitalSummary(movements);
+  const latestClose = capitalCloses[0];
 
   return (
     <div className="grid gap-6">

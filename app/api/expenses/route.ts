@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ expenses });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "GET /api/expenses");
   }
 }
 
@@ -44,6 +44,6 @@ export async function POST(request: Request) {
     const expense = await createExpense(parsed.data);
     return NextResponse.json({ expense }, { status: 201 });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "POST /api/expenses");
   }
 }

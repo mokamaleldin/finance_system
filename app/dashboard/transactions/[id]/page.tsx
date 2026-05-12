@@ -9,6 +9,7 @@ import {
 } from "@/components/forms/transaction-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { requireAdminSession } from "@/lib/auth";
 import { customerSelect } from "@/lib/customer-select";
 import { formatDate, formatDecimal, formatMoney } from "@/lib/format";
@@ -24,6 +25,7 @@ import {
 } from "@/lib/options";
 import { hasPermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 import { getOpenAmountInfos, getRateDirection, getTransferSettlement } from "@/lib/transfer-calculations";
 
 type TransactionDetailPageProps = {
@@ -34,14 +36,29 @@ export default async function TransactionDetailPage({ params }: TransactionDetai
   const session = await requireAdminSession();
   const canWriteTransactions = hasPermission(session.role, "transactions:write");
   const { id } = await params;
-  const transaction = await prisma.transferTransaction.findUnique({
-    where: { id },
-    include: {
-      customer: { select: customerSelect },
-      commission: true,
-      executions: { orderBy: [{ date: "asc" }, { createdAt: "asc" }] },
-    },
-  });
+  let transaction;
+  try {
+    logMissingServerEnv("dashboard/transactions/[id]");
+    transaction = await prisma.transferTransaction.findUnique({
+      where: { id },
+      include: {
+        customer: { select: customerSelect },
+        commission: true,
+        executions: { orderBy: [{ date: "asc" }, { createdAt: "asc" }] },
+      },
+    });
+  } catch (error) {
+    logServerError(`dashboard/transactions/[id]: failed to load transaction ${id}`, error);
+    return (
+      <div className="grid gap-6">
+        <div className="rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+          <h2 className="text-3xl font-bold text-ink">تفاصيل العملية</h2>
+          <p className="mt-1 text-sm text-muted">تعذر تحميل بيانات العملية.</p>
+        </div>
+        <DataError description="تعذر تحميل تفاصيل العملية من قاعدة البيانات. راجع Vercel Logs لمعرفة السبب." />
+      </div>
+    );
+  }
 
   if (!transaction) {
     notFound();

@@ -1,0 +1,9 @@
+{
+  "/api/transactions/[id]/route": "app/api/transactions/[id]/route.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/transactions/new/page": "app/dashboard/transactions/new/page.js",
+  "/dashboard/transactions/page": "app/dashboard/transactions/page.js",
+  "/dashboard/customers/page": "app/dashboard/customers/page.js",
+  "/dashboard/reports/daily/page": "app/dashboard/reports/daily/page.js",
+  "/dashboard/transactions/[id]/edit/page": "app/dashboard/transactions/[id]/edit/page.js"
+}

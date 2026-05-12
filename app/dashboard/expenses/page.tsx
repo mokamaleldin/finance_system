@@ -7,6 +7,7 @@ import { ExpenseFilterForm } from "@/components/forms/expense-filter-form";
 import { ExpenseForm } from "@/components/forms/expense-form";
 import { BarChart, DonutChart } from "@/components/ui/analytics-charts";
 import { Card } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireAdminSession } from "@/lib/auth";
 import { getExpense, getExpenses } from "@/lib/expense-service";
@@ -21,6 +22,7 @@ import {
 } from "@/lib/options";
 import { hasPermission } from "@/lib/permissions";
 import { toDecimal } from "@/lib/calculations";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 
 type ExpensesPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -45,17 +47,35 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
     redirect("/dashboard/expenses");
   }
 
-  const [expenses, editingExpense] = await Promise.all([
-    getExpenses({ from, to, category, currencyCode }),
-    editId ? getExpense(editId) : Promise.resolve(null),
-  ]);
-
   const filterParams = new URLSearchParams();
   if (from) filterParams.set("from", formatDateInput(from));
   if (to) filterParams.set("to", formatDateInput(to));
   if (category) filterParams.set("category", category);
   if (currencyCode) filterParams.set("currencyCode", currencyCode);
   const savedPath = `/dashboard/expenses${filterParams.toString() ? `?${filterParams.toString()}` : ""}`;
+  let pageData;
+  try {
+    logMissingServerEnv("dashboard/expenses");
+    pageData = await Promise.all([
+      getExpenses({ from, to, category, currencyCode }),
+      editId ? getExpense(editId) : Promise.resolve(null),
+    ]);
+  } catch (error) {
+    logServerError("dashboard/expenses: failed to load expenses", error);
+    return (
+      <div className="grid gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+          <div>
+            <h2 className="text-3xl font-bold text-ink">المصاريف</h2>
+            <p className="mt-1 text-sm text-muted">سجل مصاريف التشغيل بعيدًا عن ربح العمليات.</p>
+          </div>
+          {canCreateExpenses ? <ExpenseCreateModal onSavedPath={savedPath} /> : null}
+        </div>
+        <DataError description="تعذر تحميل المصاريف من قاعدة البيانات. راجع لوج السيرفر لمعرفة الخطأ الحقيقي." />
+      </div>
+    );
+  }
+  const [expenses, editingExpense] = pageData;
   const categoryChartItems = expenseCategoryValues.map((item) => ({
     label: expenseCategoryLabels[item],
     value: expenses.filter((expense) => expense.category === item).length,

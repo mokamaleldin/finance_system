@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CompleteStepButton } from "@/components/forms/transaction-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireAdminSession } from "@/lib/auth";
 import { currencies } from "@/lib/calculations";
@@ -13,13 +14,29 @@ import {
   transferTypeLabels,
 } from "@/lib/options";
 import { hasPermission } from "@/lib/permissions";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 import { getOpenAmountInfos, getTransferSettlement } from "@/lib/transfer-calculations";
 import { getOpenTransfers } from "@/lib/transfer-service";
 
 export default async function OpenTransactionsPage() {
   const session = await requireAdminSession();
   const canWriteTransactions = hasPermission(session.role, "transactions:write");
-  const report = await getOpenTransfers();
+  let report;
+  try {
+    logMissingServerEnv("dashboard/open");
+    report = await getOpenTransfers();
+  } catch (error) {
+    logServerError("dashboard/open: failed to load open transfers", error);
+    return (
+      <div className="grid gap-6">
+        <div className="rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+          <h2 className="text-3xl font-bold text-ink">المتبقي علينا ولنا</h2>
+          <p className="mt-1 text-sm text-muted">عمليات مفتوحة لم يكتمل فيها الاستلام أو التسليم.</p>
+        </div>
+        <DataError description="تعذر تحميل العمليات المفتوحة من قاعدة البيانات. راجع لوج السيرفر." />
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6">

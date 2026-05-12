@@ -60,7 +60,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return NextResponse.json({ user });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "PATCH /api/users/[id]");
   }
 }
 
@@ -93,6 +93,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "DELETE /api/users/[id]");
   }
 }

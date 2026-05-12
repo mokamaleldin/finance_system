@@ -19,7 +19,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const expense = await updateExpense(id, parsed.data);
     return NextResponse.json({ expense });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "PATCH /api/expenses/[id]");
   }
 }
 
@@ -33,6 +33,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const expense = await deleteExpense(id);
     return NextResponse.json({ expense });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "DELETE /api/expenses/[id]");
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSessionToken, getSessionCookieOptions, SESSION_COOKIE_NAME, verifyAdminCredentials } from "@/lib/auth";
+import { logServerError } from "@/lib/server-logging";
 import { loginSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    console.error(error);
+    logServerError("POST /api/auth/login", error);
     return NextResponse.json(
       { message: "إعدادات تسجيل الدخول غير مكتملة" },
       { status: 500 },

@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { MovementForm } from "@/components/forms/movement-form";
 import { Card } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { requirePagePermission } from "@/lib/auth";
 import { customerOptionSelect } from "@/lib/customer-select";
 import { formatDateInput } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 
 type EditMovementPageProps = {
   params: Promise<{ id: string }>;
@@ -13,11 +15,27 @@ type EditMovementPageProps = {
 export default async function EditMovementPage({ params }: EditMovementPageProps) {
   await requirePagePermission("transactions:write");
   const { id } = await params;
-  const [movement, customers, transactionGroups] = await Promise.all([
-    prisma.financialMovement.findUnique({ where: { id } }),
-    prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect }),
-    prisma.transactionGroup.findMany({ orderBy: { createdAt: "desc" } }),
-  ]);
+  let pageData;
+  try {
+    logMissingServerEnv("dashboard/movements/[id]/edit");
+    pageData = await Promise.all([
+      prisma.financialMovement.findUnique({ where: { id } }),
+      prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect }),
+      prisma.transactionGroup.findMany({ orderBy: { createdAt: "desc" } }),
+    ]);
+  } catch (error) {
+    logServerError(`dashboard/movements/[id]/edit: failed to load movement ${id}`, error);
+    return (
+      <div className="grid gap-6">
+        <div>
+          <h2 className="text-2xl font-bold text-ink">تعديل حركة مالية</h2>
+          <p className="mt-1 text-sm text-muted">تعذر تحميل بيانات الحركة للتعديل.</p>
+        </div>
+        <DataError description="تعذر تحميل الحركة أو القوائم المرتبطة بها من قاعدة البيانات." />
+      </div>
+    );
+  }
+  const [movement, customers, transactionGroups] = pageData;
 
   if (!movement) {
     notFound();

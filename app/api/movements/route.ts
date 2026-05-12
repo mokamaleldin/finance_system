@@ -29,6 +29,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ movement }, { status: 201 });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "POST /api/movements");
   }
 }

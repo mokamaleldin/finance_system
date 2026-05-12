@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE_NAME } from "@/lib/auth-constants";
 import { hasPermission, isUserRole, type Permission, type UserRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { logServerError } from "@/lib/server-logging";
 
 export { SESSION_COOKIE_NAME };
 
@@ -18,6 +19,7 @@ function getAuthSecret() {
   const secret = process.env.AUTH_SECRET;
 
   if (!secret || secret.length < 16) {
+    console.error("[env-check] AUTH_SECRET is missing or shorter than 16 characters.");
     throw new Error("AUTH_SECRET must be set to a long random value.");
   }
 
@@ -96,9 +98,22 @@ export function verifySessionToken(token: string | undefined) {
     return null;
   }
 
-  const [payload, signature] = token.split(".");
+  let payload: string | undefined;
+  let signature: string | undefined;
 
-  if (!payload || !signature || !safeCompare(signature, sign(payload))) {
+  try {
+    [payload, signature] = token.split(".");
+  } catch (error) {
+    logServerError("auth.verifySessionToken: malformed session token", error);
+    return null;
+  }
+
+  try {
+    if (!payload || !signature || !safeCompare(signature, sign(payload))) {
+      return null;
+    }
+  } catch (error) {
+    logServerError("auth.verifySessionToken: unable to verify signature", error);
     return null;
   }
 
@@ -110,7 +125,8 @@ export function verifySessionToken(token: string | undefined) {
     }
 
     return session;
-  } catch {
+  } catch (error) {
+    logServerError("auth.verifySessionToken", error);
     return null;
   }
 }

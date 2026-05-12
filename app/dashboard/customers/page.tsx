@@ -10,12 +10,14 @@ import { CustomerCardMenu } from "@/components/forms/customer-card-menu";
 import { CustomerCreateModal } from "@/components/forms/customer-create-modal";
 import { CustomerFilterForm } from "@/components/forms/customer-filter-form";
 import { StatCard } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireAdminSession } from "@/lib/auth";
 import { currencies, toDecimal } from "@/lib/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import { customerKindLabels } from "@/lib/options";
 import { hasPermission } from "@/lib/permissions";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 import { getCustomerListWithTransferSummary } from "@/lib/transfer-service";
 
 type CustomersPageProps = {
@@ -76,7 +78,25 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   const balance = typeof params.balance === "string" ? params.balance : "all";
   const currentPageParam = typeof params.page === "string" ? Number.parseInt(params.page, 10) : 1;
   const currentPage = Number.isFinite(currentPageParam) && currentPageParam > 0 ? currentPageParam : 1;
-  const baseRows = await getCustomerListWithTransferSummary(q);
+  let baseRows;
+  try {
+    logMissingServerEnv("dashboard/customers");
+    baseRows = await getCustomerListWithTransferSummary(q);
+  } catch (error) {
+    logServerError("dashboard/customers: failed to load customers", error);
+    return (
+      <div className="grid gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-ink">العملاء والتجار</h2>
+            <p className="mt-1 text-sm text-muted">إدارة العملاء والتجار ومتابعة تعاملاتهم وأرصدتهم بسهولة.</p>
+          </div>
+          {canCreateCustomers ? <CustomerCreateModal /> : null}
+        </div>
+        <DataError description="تعذر تحميل العملاء أو أرصدتهم من قاعدة البيانات. راجع لوج السيرفر وتأكد من حالة Nile." />
+      </div>
+    );
+  }
   const rows = baseRows
     .filter(({ open }) => {
       const balanceMatch =

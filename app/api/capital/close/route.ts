@@ -11,7 +11,7 @@ export async function GET() {
     const closes = await getCapitalCloses();
     return NextResponse.json({ closes });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "GET /api/capital/close");
   }
 }
 
@@ -26,6 +26,6 @@ export async function POST(request: Request) {
     const close = await createCapitalClose(parsed.data);
     return NextResponse.json({ close }, { status: 201 });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "POST /api/capital/close");
   }
 }

@@ -21,6 +21,6 @@ export async function DELETE(request: Request, context: RouteContext) {
     const transaction = await deleteTransferExecution(id);
     return NextResponse.json({ transaction });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "DELETE /api/transactions/executions/[id]");
   }
 }

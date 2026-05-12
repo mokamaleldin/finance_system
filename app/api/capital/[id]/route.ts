@@ -19,7 +19,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const movement = await updateCapitalMovement(id, parsed.data);
     return NextResponse.json({ movement });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "PATCH /api/capital/[id]");
   }
 }
 
@@ -33,6 +33,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const movement = await deleteCapitalMovement(id);
     return NextResponse.json({ movement });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "DELETE /api/capital/[id]");
   }
 }

@@ -2,11 +2,13 @@ import { CheckCircle2, Clock3, PlusCircle, Receipt, Users2 } from "lucide-react"
 import Link from "next/link";
 import { BarChart, MiniLineChart } from "@/components/ui/analytics-charts";
 import { Card, StatCard } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { requireAdminSession } from "@/lib/auth";
 import { currencies } from "@/lib/calculations";
 import { formatDate, formatDecimal, formatMoney } from "@/lib/format";
 import { currencyLabels } from "@/lib/options";
 import { hasPermission } from "@/lib/permissions";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 import { getDashboardTrends, getTodayDashboard } from "@/lib/transfer-service";
 
 
@@ -42,11 +44,35 @@ export default async function DashboardPage() {
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
 
-  const [dashboard, yesterdayDashboard, trends] = await Promise.all([
-    getTodayDashboard(today),
-    getTodayDashboard(yesterday),
-    getDashboardTrends(trendDays, today),
-  ]);
+  let dashboardData;
+  try {
+    logMissingServerEnv("dashboard/page");
+    dashboardData = await Promise.all([
+      getTodayDashboard(today),
+      getTodayDashboard(yesterday),
+      getDashboardTrends(trendDays, today),
+    ]);
+  } catch (error) {
+    logServerError("dashboard/page: failed to load dashboard metrics", error);
+    return (
+      <div className="grid gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+          <div>
+            <h2 className="text-3xl font-bold text-ink">لوحة التحكم</h2>
+            <p className="mt-1 text-sm text-muted">أرقام اليوم فقط حسب تاريخ العملية.</p>
+          </div>
+          {canWriteTransactions ? (
+            <Link href="/dashboard/transactions/new" prefetch={false} className="action-primary w-full sm:w-auto">
+              <PlusCircle className="h-4 w-4" />
+              معاملة جديدة
+            </Link>
+          ) : null}
+        </div>
+        <DataError description="تعذر تحميل أرقام لوحة التحكم من قاعدة البيانات. راجع الاتصال أو migrations في السيرفر." />
+      </div>
+    );
+  }
+  const [dashboard, yesterdayDashboard, trends] = dashboardData;
 
   const dayFormatter = new Intl.DateTimeFormat("ar", { weekday: "short" });
 

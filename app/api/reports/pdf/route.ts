@@ -35,6 +35,6 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "GET /api/reports/pdf");
   }
 }

@@ -2,6 +2,7 @@ import { FileDown } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, StatCard } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { EmptyState } from "@/components/ui/empty-state";
 import { currencies, type DecimalInput } from "@/lib/calculations";
 import { formatDate, formatDateInput, formatMoney, parseDateParam } from "@/lib/format";
@@ -21,6 +22,7 @@ import {
   reportPeriodLabels,
   reportPeriodValues,
 } from "@/lib/report-service";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 
 type ReportsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -64,13 +66,31 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const from = parseDateParam(params.from, new Date());
   const to = parseDateParam(params.to, new Date());
   const range = getReportDateRange({ period, from, to });
-  const report = await getReportByDateRange(range.start, range.end);
-
   const exportParams = new URLSearchParams({
     period,
     from: formatDateInput(range.start),
     to: formatDateInput(range.end),
   });
+  let report;
+  try {
+    logMissingServerEnv("dashboard/reports/daily");
+    report = await getReportByDateRange(range.start, range.end);
+  } catch (error) {
+    logServerError("dashboard/reports/daily: failed to load report", error);
+    return (
+      <div className="grid gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+          <div>
+            <h2 className="text-3xl font-bold text-ink">التقارير</h2>
+            <p className="mt-1 text-sm text-muted">
+              تقرير الفترة من {formatDate(range.start)} إلى {formatDate(range.end)} بدون خلط العملات.
+            </p>
+          </div>
+        </div>
+        <DataError description="تعذر تحميل التقرير من قاعدة البيانات. راجع Vercel Logs لمعرفة الاستعلام الفاشل." />
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6">

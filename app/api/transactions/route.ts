@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     });
     return NextResponse.json({ transactions });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "GET /api/transactions");
   }
 }
 
@@ -55,6 +55,6 @@ export async function POST(request: Request) {
     const transaction = await createTransferTransaction(parsed.data);
     return NextResponse.json({ transaction }, { status: 201 });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "POST /api/transactions");
   }
 }

@@ -32,7 +32,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     return NextResponse.json({ customer });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "PATCH /api/customers/[id]");
   }
 }
 
@@ -46,6 +46,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
     await prisma.customer.delete({ where: { id }, select: { id: true } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "DELETE /api/customers/[id]");
   }
 }

@@ -30,6 +30,6 @@ export async function GET(_request: Request, context: RouteContext) {
       },
     });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "GET /api/statements/customer/[id]");
   }
 }

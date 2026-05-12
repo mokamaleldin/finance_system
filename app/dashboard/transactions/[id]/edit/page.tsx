@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import { TransferTransactionForm } from "@/components/forms/transfer-transaction-form";
+import { DataError } from "@/components/ui/data-error";
 import { requirePagePermission } from "@/lib/auth";
 import { customerOptionSelect } from "@/lib/customer-select";
 import { formatDateInput } from "@/lib/format";
 import type { CurrencyCode } from "@/lib/options";
 import { prisma } from "@/lib/prisma";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 
 type EditTransactionPageProps = {
   params: Promise<{ id: string }>;
@@ -13,10 +15,26 @@ type EditTransactionPageProps = {
 export default async function EditTransactionPage({ params }: EditTransactionPageProps) {
   await requirePagePermission("transactions:write");
   const { id } = await params;
-  const [transaction, customers] = await Promise.all([
-    prisma.transferTransaction.findUnique({ where: { id }, include: { commission: true } }),
-    prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect }),
-  ]);
+  let pageData;
+  try {
+    logMissingServerEnv("dashboard/transactions/[id]/edit");
+    pageData = await Promise.all([
+      prisma.transferTransaction.findUnique({ where: { id }, include: { commission: true } }),
+      prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect }),
+    ]);
+  } catch (error) {
+    logServerError(`dashboard/transactions/[id]/edit: failed to load transaction ${id}`, error);
+    return (
+      <div className="grid gap-6">
+        <div>
+          <h2 className="text-2xl font-bold text-ink">تعديل العملية</h2>
+          <p className="mt-1 text-sm text-muted">تعذر تحميل بيانات العملية للتعديل.</p>
+        </div>
+        <DataError description="تعذر تحميل العملية أو قائمة العملاء من قاعدة البيانات." />
+      </div>
+    );
+  }
+  const [transaction, customers] = pageData;
 
   if (!transaction) {
     notFound();

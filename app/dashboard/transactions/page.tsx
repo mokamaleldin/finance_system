@@ -4,6 +4,7 @@ import { CancelTransactionButton } from "@/components/forms/transaction-actions"
 import { TransactionsFilterForm } from "@/components/forms/transactions-filter-form";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireAdminSession } from "@/lib/auth";
 import { customerOptionSelect } from "@/lib/customer-select";
@@ -23,6 +24,7 @@ import {
 import { hasPermission } from "@/lib/permissions";
 import { getTransferTransactions } from "@/lib/transfer-service";
 import { prisma } from "@/lib/prisma";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 
 type TransactionsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -45,17 +47,41 @@ export default async function TransactionsPage({ searchParams }: TransactionsPag
   const fromValue = typeof params.from === "string" ? params.from : "";
   const toValue = typeof params.to === "string" ? params.to : "";
 
-  const [customers, transactions] = await Promise.all([
-    prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect }),
-    getTransferTransactions({
-      from,
-      to,
-      customerId: customerId || undefined,
-      type,
-      currency,
-      status,
-    }),
-  ]);
+  let pageData;
+  try {
+    logMissingServerEnv("dashboard/transactions");
+    pageData = await Promise.all([
+      prisma.customer.findMany({ orderBy: { name: "asc" }, select: customerOptionSelect }),
+      getTransferTransactions({
+        from,
+        to,
+        customerId: customerId || undefined,
+        type,
+        currency,
+        status,
+      }),
+    ]);
+  } catch (error) {
+    logServerError("dashboard/transactions: failed to load transactions", error);
+    return (
+      <div className="grid gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-4 shadow-soft backdrop-blur sm:p-5">
+          <div>
+            <h2 className="text-2xl font-bold text-ink sm:text-3xl">سجل المعاملات</h2>
+            <p className="mt-1 text-sm text-muted">كل عمليات التحويل مع حالة الاستلام والتسليم والربح.</p>
+          </div>
+          {canWriteTransactions ? (
+            <Link href="/dashboard/transactions/new" prefetch={false} className="action-primary w-full sm:w-auto">
+              <PlusCircle className="h-4 w-4" />
+              معاملة جديدة
+            </Link>
+          ) : null}
+        </div>
+        <DataError description="تعذر تحميل سجل المعاملات من قاعدة البيانات. راجع لوج السيرفر لمعرفة الاستعلام الذي فشل." />
+      </div>
+    );
+  }
+  const [customers, transactions] = pageData;
 
   return (
     <div className="grid gap-6">

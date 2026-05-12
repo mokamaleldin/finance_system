@@ -2,9 +2,11 @@ import { KeyRound, ShieldCheck, UserCog } from "lucide-react";
 import { UserForm } from "@/components/forms/user-form";
 import { DeleteUserButton } from "@/components/forms/user-actions";
 import { Card, StatCard } from "@/components/ui/card";
+import { DataError } from "@/components/ui/data-error";
 import { requirePagePermission } from "@/lib/auth";
 import { roleLabels, userRoles, type UserRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { logMissingServerEnv, logServerError } from "@/lib/server-logging";
 
 export const dynamic = "force-dynamic";
 
@@ -18,16 +20,31 @@ function formatUserDate(date: Date) {
 export default async function UsersPage() {
   const session = await requirePagePermission("users:manage");
 
-  const users = await prisma.user.findMany({
-    orderBy: [{ role: "asc" }, { email: "asc" }],
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
+  let users;
+  try {
+    logMissingServerEnv("dashboard/users");
+    users = await prisma.user.findMany({
+      orderBy: [{ role: "asc" }, { email: "asc" }],
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  } catch (error) {
+    logServerError("dashboard/users: failed to load users", error);
+    return (
+      <div className="grid gap-6">
+        <div className="rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
+          <h2 className="text-3xl font-bold text-ink">المستخدمين والصلاحيات</h2>
+          <p className="mt-1 text-sm text-muted">أضف أي عدد من الحسابات، واختر صلاحية كل حساب حسب شغله.</p>
+        </div>
+        <DataError description="تعذر تحميل المستخدمين من قاعدة البيانات. راجع إعدادات الاتصال في Vercel." />
+      </div>
+    );
+  }
 
   const counts = userRoles.reduce(
     (totals, role) => {

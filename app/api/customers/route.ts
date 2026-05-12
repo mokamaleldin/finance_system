@@ -11,21 +11,25 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
 
-  const customers = await prisma.customer.findMany({
-    where: q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { phone: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
-    orderBy: { createdAt: "desc" },
-    select: customerSelect,
-    take: 50,
-  });
+  try {
+    const customers = await prisma.customer.findMany({
+      where: q
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { phone: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : undefined,
+      orderBy: { createdAt: "desc" },
+      select: customerSelect,
+      take: 50,
+    });
 
-  return NextResponse.json({ customers });
+    return NextResponse.json({ customers });
+  } catch (error) {
+    return serverErrorResponse(error, "GET /api/customers");
+  }
 }
 
 export async function POST(request: Request) {
@@ -49,6 +53,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ customer }, { status: 201 });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "POST /api/customers");
   }
 }

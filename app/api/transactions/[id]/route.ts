@@ -37,7 +37,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       const transaction = await setTransferStepStatus(id, parsed.data);
       return NextResponse.json({ transaction });
     } catch (error) {
-      return serverErrorResponse(error);
+      return serverErrorResponse(error, "PATCH /api/transactions/[id] status");
     }
   }
 
@@ -48,7 +48,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const transaction = await updateTransferTransaction(id, parsed.data);
     return NextResponse.json({ transaction });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "PATCH /api/transactions/[id]");
   }
 }
 
@@ -65,6 +65,6 @@ export async function DELETE(request: Request, context: RouteContext) {
     const transaction = await cancelTransferTransaction(id, parsed.data.cancellationReason);
     return NextResponse.json({ transaction });
   } catch (error) {
-    return serverErrorResponse(error);
+    return serverErrorResponse(error, "DELETE /api/transactions/[id]");
   }
 }
