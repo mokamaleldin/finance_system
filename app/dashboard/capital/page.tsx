@@ -1,6 +1,7 @@
-import { Pencil, PlusCircle, WalletCards } from "lucide-react";
+import { Calculator, Pencil, PlusCircle, WalletCards } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CapitalCloseForm } from "@/components/forms/capital-close-form";
 import { DeleteCapitalMovementButton } from "@/components/forms/capital-movement-actions";
 import { CapitalFilterForm } from "@/components/forms/capital-filter-form";
 import { CapitalMovementForm } from "@/components/forms/capital-movement-form";
@@ -8,7 +9,17 @@ import { Badge } from "@/components/ui/badge";
 import { Card, StatCard } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requirePagePermission } from "@/lib/auth";
-import { calculateCapitalSummary, getCapitalMovement, getCapitalMovements, getCapitalSummary } from "@/lib/capital-service";
+import {
+  calculateCapitalSummary,
+  getCapitalCashBalances,
+  getCapitalCloseRateDefaults,
+  getCapitalCloses,
+  getCapitalMovement,
+  getCapitalMovements,
+  getCapitalSummary,
+  parseCapitalCloseBalances,
+  parseCapitalCloseRates,
+} from "@/lib/capital-service";
 import { formatDate, formatDateInput, formatMoney, parseOptionalDateParam } from "@/lib/format";
 import {
   capitalMovementTypeLabels,
@@ -42,12 +53,16 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
     redirect("/dashboard/capital");
   }
 
-  const [movements, editingMovement, fullSummary] = await Promise.all([
+  const [movements, editingMovement, fullSummary, currentCashBalances, closeRateDefaults, capitalCloses] = await Promise.all([
     getCapitalMovements({ from, to, type, currencyCode }),
     editId ? getCapitalMovement(editId) : Promise.resolve(null),
     getCapitalSummary(),
+    getCapitalCashBalances(new Date()),
+    getCapitalCloseRateDefaults(),
+    getCapitalCloses(),
   ]);
   const filteredSummary = calculateCapitalSummary(movements);
+  const latestClose = capitalCloses[0];
 
   const filterParams = new URLSearchParams();
   if (from) filterParams.set("from", formatDateInput(from));
@@ -61,7 +76,7 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-line/80 bg-white/75 p-5 shadow-soft backdrop-blur">
         <div>
           <h2 className="text-3xl font-bold text-ink">رأس المال</h2>
-          <p className="mt-1 text-sm text-muted">تابع رأس المال الأصلي، الضخ، والسحب لكل عملة بشكل منفصل.</p>
+          <p className="mt-1 text-sm text-muted">تابع رصيد الكاش الفعلي، وسجل جرد اليوم بالدولار حسب الريت.</p>
         </div>
         {canWriteCapital ? (
           <a href="#capital-form" className="action-primary w-full sm:w-auto">
@@ -75,21 +90,59 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
         {currencyValues.map((currency) => (
           <StatCard
             key={currency}
-            title={`رصيد رأس المال - ${currencyLabels[currency]}`}
-            value={formatMoney(fullSummary.balance[currency], currency)}
-            hint={`ضخ: ${formatMoney(fullSummary.inflow[currency], currency)} | سحب: ${formatMoney(fullSummary.outflow[currency], currency)}`}
+            title={`رصيد الكاش الحالي - ${currencyLabels[currency]}`}
+            value={formatMoney(currentCashBalances[currency], currency)}
+            hint={`رأس المال اليدوي: ${formatMoney(fullSummary.balance[currency], currency)}`}
             icon={<WalletCards className="h-5 w-5" />}
             trend={{
-              label: fullSummary.balance[currency].isZero()
+              label: currentCashBalances[currency].isZero()
                 ? "لا يوجد رصيد"
-                : fullSummary.balance[currency].isPositive()
+                : currentCashBalances[currency].isPositive()
                   ? "رصيد موجب"
                   : "رصيد سالب",
-              direction: fullSummary.balance[currency].isNegative() ? "down" : fullSummary.balance[currency].isZero() ? "neutral" : "up",
+              direction: currentCashBalances[currency].isNegative() ? "down" : currentCashBalances[currency].isZero() ? "neutral" : "up",
             }}
           />
         ))}
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="رأس المال بعد آخر جرد"
+          value={latestClose ? formatMoney(latestClose.capitalUsd, "USD") : "-"}
+          hint={latestClose ? `آخر جرد: ${formatDate(latestClose.date)}` : "لم يتم تسجيل جرد بعد"}
+          icon={<Calculator className="h-5 w-5" />}
+          trend={latestClose ? {
+            label: latestClose.profitUsd.isZero() ? "بدون فرق" : latestClose.profitUsd.isPositive() ? "زيادة" : "عجز",
+            direction: latestClose.profitUsd.isNegative() ? "down" : latestClose.profitUsd.isZero() ? "neutral" : "up",
+          } : undefined}
+        />
+        <StatCard
+          title="ربح / عجز آخر جرد"
+          value={latestClose ? formatMoney(latestClose.profitUsd, "USD") : "-"}
+          hint="بعد استبعاد ضخ وسحب رأس المال"
+          trend={latestClose ? {
+            label: latestClose.profitUsd.isZero() ? "تعادل" : latestClose.profitUsd.isPositive() ? "ربح" : "خسارة",
+            direction: latestClose.profitUsd.isNegative() ? "down" : latestClose.profitUsd.isZero() ? "neutral" : "up",
+          } : undefined}
+        />
+        <StatCard
+          title="ضخ رأس مال داخل الجرد"
+          value={latestClose ? formatMoney(latestClose.externalInflowUsd, "USD") : "-"}
+          hint="محول للدولار بسعر الجرد"
+        />
+        <StatCard
+          title="سحب رأس مال داخل الجرد"
+          value={latestClose ? formatMoney(latestClose.externalOutflowUsd, "USD") : "-"}
+          hint="محول للدولار بسعر الجرد"
+        />
+      </div>
+
+      {canWriteCapital ? (
+        <Card title="جرد اليوم بالدولار" subtitle="أدخل سعر الدولار مقابل كل عملة، وسيتم تحويل الرصيد الحالي وحساب الربح أو العجز.">
+          <CapitalCloseForm initialRates={closeRateDefaults} />
+        </Card>
+      ) : null}
 
       {canWriteCapital ? (
         <Card title={editingMovement ? "تعديل حركة رأس مال" : "إضافة حركة رأس مال"} subtitle="استخدم الضخ عند إدخال مال جديد، والسحب عند خروج مال من رأس المال.">
@@ -116,6 +169,62 @@ export default async function CapitalPage({ searchParams }: CapitalPageProps) {
           ) : null}
         </Card>
       ) : null}
+
+      <Card title="سجل الجرد اليومي">
+        {capitalCloses.length === 0 ? (
+          <EmptyState title="لا توجد عمليات جرد" description="بعد الضغط على جرد اليوم سيظهر تاريخ الجرد والربح هنا." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px] text-sm">
+              <thead>
+                <tr className="border-b border-line text-right text-muted">
+                  <th className="py-3 font-semibold">التاريخ</th>
+                  <th className="py-3 font-semibold">رأس المال بالدولار</th>
+                  <th className="py-3 font-semibold">السابق</th>
+                  <th className="py-3 font-semibold">الضخ</th>
+                  <th className="py-3 font-semibold">السحب</th>
+                  <th className="py-3 font-semibold">الربح / العجز</th>
+                  <th className="py-3 font-semibold">أرصدة العملات</th>
+                  <th className="py-3 font-semibold">الريت</th>
+                </tr>
+              </thead>
+              <tbody>
+                {capitalCloses.map((close) => {
+                  const balances = parseCapitalCloseBalances(close.balances);
+                  const rates = parseCapitalCloseRates(close.usdRates);
+
+                  return (
+                    <tr key={close.id} className="border-b border-line/70 align-top">
+                      <td className="py-3">{formatDate(close.date)}</td>
+                      <td className="py-3 font-semibold text-ink">{formatMoney(close.capitalUsd, "USD")}</td>
+                      <td className="py-3">{formatMoney(close.previousCapitalUsd, "USD")}</td>
+                      <td className="py-3">{formatMoney(close.externalInflowUsd, "USD")}</td>
+                      <td className="py-3">{formatMoney(close.externalOutflowUsd, "USD")}</td>
+                      <td className={`py-3 font-semibold ${close.profitUsd.isNegative() ? "text-red-700" : "text-emerald-700"}`}>
+                        {formatMoney(close.profitUsd, "USD")}
+                      </td>
+                      <td className="py-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {currencyValues.map((currency) => (
+                            <Badge key={currency}>{formatMoney(balances[currency], currency)}</Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-3 text-muted">
+                        <div className="grid gap-1">
+                          {currencyValues.filter((currency) => currency !== "USD").map((currency) => (
+                            <span key={currency}>USD/{currency}: {rates[currency] || "-"}</span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <section className="rounded-lg border border-line/80 bg-white/95 p-4 shadow-soft sm:p-5">
         <div className="mb-5 border-b border-line/70 pb-3">

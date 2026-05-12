@@ -222,6 +222,23 @@ model CapitalMovement {
   @@index([currencyCode])
 }
 
+model CapitalClose {
+  id                 String   @id @default(cuid())
+  date               DateTime @unique
+  usdRates           Json
+  balances           Json
+  capitalUsd         Decimal  @db.Decimal(18, 4)
+  previousCapitalUsd Decimal  @db.Decimal(18, 4)
+  externalInflowUsd  Decimal  @db.Decimal(18, 4)
+  externalOutflowUsd Decimal  @db.Decimal(18, 4)
+  profitUsd          Decimal  @db.Decimal(18, 4)
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([date])
+}
+
 model Commission {
   id            String              @id @default(cuid())
   transactionId String              @unique

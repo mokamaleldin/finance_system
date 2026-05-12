@@ -274,6 +274,44 @@ export const capitalMovementSchema = z
     }
   });
 
+export const capitalCloseSchema = z
+  .object({
+    date: z.coerce.date({ message: "التاريخ غير صحيح" }),
+    usdRates: z.record(z.string(), z.string().trim()).optional().default({}),
+    notes: z.string().trim().optional().default(""),
+  })
+  .superRefine((value, context) => {
+    for (const currency of currencyValues) {
+      const rawRate = currency === "USD" ? "1" : value.usdRates[currency];
+
+      if (!rawRate) {
+        context.addIssue({
+          code: "custom",
+          path: ["usdRates", currency],
+          message: "أدخل سعر الدولار مقابل العملة",
+        });
+        continue;
+      }
+
+      try {
+        const rate = new Decimal(rawRate);
+        if (!rate.isFinite() || rate.lte(0)) {
+          context.addIssue({
+            code: "custom",
+            path: ["usdRates", currency],
+            message: "السعر يجب أن يكون أكبر من صفر",
+          });
+        }
+      } catch {
+        context.addIssue({
+          code: "custom",
+          path: ["usdRates", currency],
+          message: "السعر غير صحيح",
+        });
+      }
+    }
+  });
+
 export function nullableString(value: string | undefined | null) {
   if (!value) {
     return null;
